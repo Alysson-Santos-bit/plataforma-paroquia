@@ -1,14 +1,19 @@
 module paroquia-backend
 
-go 1.24.3
+go 1.23
 
 require (
-	github.com/gin-contrib/cors v1.7.6
-	github.com/gin-gonic/gin v1.10.1
-	golang.org/x/crypto v0.39.0
-	gorm.io/driver/postgres v1.6.0
-	gorm.io/gorm v1.31.0
+	github.com/gin-contrib/cors v1.4.0
+	github.com/gin-gonic/gin v1.8.1
+	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
+	gorm.io/driver/postgres v1.4.5
+	gorm.io/gorm v1.24.0
 )
+
+
+
+
+
 
 require (
 	github.com/bytedance/sonic v1.13.3 // indirect

@@ -1,21 +1,24 @@
-# Usa uma imagem base do Node.js para o ambiente de desenvolvimento
 FROM node:18-alpine
 
-# Define o diretório de trabalho
+# Define o diretório de trabalho dentro do contêiner
 WORKDIR /app
 
-# Copia o package.json e package-lock.json (se existir)
-# Isso otimiza o cache do Docker, instalando dependências apenas quando o arquivo muda.
-COPY package.json ./
+# Copia primeiro os arquivos de manifesto para aproveitar o cache do Docker
+COPY package*.json ./
 
-# Instala as dependências do projeto
+# Instala todas as dependências
 RUN npm install
 
-# Copia o restante dos arquivos da aplicação (no nosso caso, apenas o App.jsx)
-COPY ./ /app/src
+# Copia TODO o resto do código (incluindo as pastas 'public' e 'src')
+COPY . .
 
-# Expõe a porta que o servidor de desenvolvimento do React usa
+# ---- PASSO DE DEPURAÇÃO ----
+# O comando abaixo vai nos mostrar exatamente o que foi copiado para dentro do /app
+RUN echo "--- LISTANDO ARQUIVOS DENTRO DO CONTÊINER ---" && ls -laR /app
+
+# Expõe a porta que o React usa
 EXPOSE 3000
 
-# Comando para iniciar o servidor de desenvolvimento
+# O comando para iniciar o servidor de desenvolvimento
 CMD ["npm", "start"]
+
