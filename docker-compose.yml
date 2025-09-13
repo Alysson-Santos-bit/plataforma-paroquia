@@ -1,0 +1,52 @@
+
+
+services:
+  # Serviço do Backend em Go
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: paroquia-backend
+    ports:
+      - "8080:8080"
+    environment:
+      # String de conexão para o banco de dados PostgreSQL
+      - DATABASE_URL=postgres://user:password@db:5432/paroquia_db?sslmode=disable
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+    # Comando para recompilar e rodar a aplicação Go a cada mudança (para desenvolvimento)
+    command: go run main.go handlers.go models.go
+
+  # Serviço do Banco de Dados PostgreSQL
+  db:
+    image: postgres:14-alpine
+    container_name: paroquia-db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=paroquia_db
+    volumes:
+      # Garante a persistência dos dados do banco de dados
+      - postgres_data:/var/lib/postgresql/data
+
+  # Serviço do Frontend em React (para ambiente de desenvolvimento)
+  # Em um ambiente de produção, o frontend seria "buildado" e servido como arquivos estáticos.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: paroquia-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      # Monta o código fonte para que as alterações reflitam em tempo real
+      - ./frontend:/app/src
+    stdin_open: true
+    tty: true
+
+volumes:
+  postgres_data:
