@@ -1,55 +1,38 @@
 package main
 
-import (
-	"time"
+import "gorm.io/gorm"
 
-	"gorm.io/gorm"
-)
-
-// User representa um paroquiano cadastrado na plataforma
+// User representa um paroquiano registado na plataforma
 type User struct {
 	gorm.Model
-	Name         string `json:"name"`
-	Email        string `json:"email" gorm:"unique"`
-	PasswordHash string `json:"-"` // O hífen evita que seja exposto na API
+	Name     string `json:"name"`
+	Email    string `json:"email" gorm:"unique"`
+	Password string `json:"-"` // O - impede que o campo seja enviado no JSON
 }
 
-// Service representa um serviço ou curso oferecido pela paróquia
+// Service representa um serviço oferecido pela paróquia (catequese, batismo, etc.)
 type Service struct {
 	gorm.Model
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }
 
-// Pastoral representa uma pastoral ou movimento da paróquia
+// Pastoral representa uma pastoral da paróquia
 type Pastoral struct {
 	gorm.Model
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	MeetingInfo string `json:"meetingInfo"`
+	Name            string `json:"name"`
+	Description     string `json:"description"`
+	MeetingTime     string `json:"meeting_time"`
+	MeetingLocation string `json:"meeting_location"`
 }
 
-// Registration representa a inscrição de um usuário em um serviço
+// Registration representa a inscrição de uma pessoa num serviço
 type Registration struct {
 	gorm.Model
-	// ID do usuário (se logado) poderia ser usado aqui
-	// UserID      uint   `json:"userId"`
-	UserName    string    `json:"userName"`
-	UserEmail   string    `json:"userEmail"`
-	UserPhone   string    `json:"userPhone"`
-	ServiceID   uint      `json:"serviceId"`
-	ServiceName string    `json:"serviceName"`
-	Status      string    `json:"status"` // Ex: "Recebida", "Confirmada", "Lista de Espera"
-	SubmittedAt time.Time `json:"submittedAt"`
+	Name      string  `json:"name"`
+	Email     string  `json:"email"`
+	Phone     string  `json:"phone"`
+	ServiceID uint    `json:"service_id"`
+	Service   Service `json:"service"`
 }
 
-// TithePayment representaria um pagamento do dízimo
-// A implementação real exigiria integração com um gateway de pagamento
-type TithePayment struct {
-	gorm.Model
-	UserID        uint
-	Amount        float64
-	PaymentMethod string // "pix", "credit_card", "boleto"
-	Status        string // "pending", "paid", "failed"
-	TransactionID string // ID do gateway de pagamento
-}

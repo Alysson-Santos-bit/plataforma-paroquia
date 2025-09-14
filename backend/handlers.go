@@ -2,137 +2,87 @@ package main
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Estrutura para receber os dados de registro do usuário
-type RegisterInput struct {
-	Name     string `json:"name" binding:"required"`
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6"`
-}
-
-// Estrutura para receber os dados de login
-type LoginInput struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
-}
-
-// RegisterUser lida com o cadastro de novos usuários
+// RegisterUser trata o registo de um novo usuário
 func RegisterUser(c *gin.Context) {
-	var input RegisterInput
+	var input struct {
+		Name     string `json:"name" binding:"required"`
+		Email    string `json:"email" binding:"required"`
+		Password string `json:"password" binding:"required"`
+	}
+
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados inválidos. Todos os campos são obrigatórios."})
 		return
 	}
 
-	// Gera o hash da senha
+	// Criptografa a senha
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao processar senha"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao processar a senha."})
 		return
 	}
 
-	user := User{Name: input.Name, Email: input.Email, PasswordHash: string(hashedPassword)}
+	user := User{Name: input.Name, Email: input.Email, Password: string(hashedPassword)}
 
-	// Salva o usuário no banco
-	result := DB.Create(&user)
+	// Salva o usuário no banco de dados
+	result := db.Create(&user)
 	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Email já cadastrado"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Não foi possível registar o usuário. O e-mail já pode estar em uso."})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Usuário registrado com sucesso!"})
+	c.JSON(http.StatusOK, gin.H{"message": "Usuário registado com sucesso!"})
 }
 
-// LoginUser lida com a autenticação de usuários
+// LoginUser trata o login de um usuário (lógica a ser implementada)
 func LoginUser(c *gin.Context) {
-	var input LoginInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	var user User
-	// Procura o usuário pelo email
-	if err := DB.Where("email = ?", input.Email).First(&user).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Email ou senha inválidos"})
-		return
-	}
-
-	// Compara a senha fornecida com o hash salvo
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Email ou senha inválidos"})
-		return
-	}
-
-	// Lógica de token (JWT) seria implementada aqui em um projeto real
-	c.JSON(http.StatusOK, gin.H{"message": "Login bem-sucedido!", "userName": user.Name})
+	c.JSON(http.StatusOK, gin.H{"message": "Login em breve!"})
 }
 
-// GetParishInfo retorna informações estáticas da paróquia
+// GetParishInfo retorna as informações estáticas da paróquia
 func GetParishInfo(c *gin.Context) {
-	info := gin.H{
-		"history": "A Paróquia Santo Antônio de Marília foi fundada em 13 de Junho de 1950, por Dom Hugo Bressane de Araújo. Desde então, tem sido um farol de fé e comunidade na cidade, crescendo junto com seus paroquianos e servindo como um centro de vida espiritual e social para inúmeras famílias.",
-		"mass_times": []string{
-			"Segunda a Sexta: 19h30",
-			"Sábado: 19h00",
-			"Domingo: 07h00, 10h00 e 19h00",
-		},
-		"liturgical_calendar_url": "https://www.vaticannews.va/pt/calendario-liturgico.html", // Exemplo
-	}
-	c.JSON(http.StatusOK, info)
+	c.JSON(http.StatusOK, gin.H{
+		"name":    "Paróquia Santo Antônio de Marília",
+		"history": "Aqui vai um resumo da rica história da nossa paróquia, desde sua fundação até os dias de hoje, destacando os momentos mais importantes, os párocos que por aqui passaram e o crescimento da nossa comunidade de fé e amor.",
+	})
 }
 
-// GetServices retorna a lista de serviços disponíveis
+// GetServices busca todos os serviços no banco de dados
 func GetServices(c *gin.Context) {
 	var services []Service
-	DB.Find(&services)
+	if err := db.Find(&services).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar serviços"})
+		return
+	}
 	c.JSON(http.StatusOK, services)
 }
 
-// GetPastorals retorna a lista de pastorais
+// GetPastorals busca todas as pastorais no banco de dados
 func GetPastorals(c *gin.Context) {
 	var pastorals []Pastoral
-	DB.Find(&pastorals)
+	if err := db.Find(&pastorals).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar pastorais"})
+		return
+	}
 	c.JSON(http.StatusOK, pastorals)
-}
-
-// Estrutura para receber dados de uma nova inscrição
-type RegistrationInput struct {
-	UserName    string `json:"userName"`
-	UserEmail   string `json:"userEmail"`
-	UserPhone   string `json:"userPhone"`
-	ServiceID   uint   `json:"serviceId"`
-	ServiceNome string `json:"serviceName"`
 }
 
 // CreateRegistration cria uma nova inscrição para um serviço
 func CreateRegistration(c *gin.Context) {
-	var input RegistrationInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados inválidos: " + err.Error()})
+	var reg Registration
+	if err := c.ShouldBindJSON(&reg); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	registration := Registration{
-		UserName:    input.UserName,
-		UserEmail:   input.UserEmail,
-		UserPhone:   input.UserPhone,
-		ServiceID:   input.ServiceID,
-		ServiceName: input.ServiceNome,
-		Status:      "Recebida",
-		SubmittedAt: time.Now(),
-	}
-
-	result := DB.Create(&registration)
-	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Não foi possível processar a inscrição."})
+	if err := db.Create(&reg).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao criar inscrição"})
 		return
 	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Inscrição realizada com sucesso!"})
+	c.JSON(http.StatusOK, reg)
 }
+

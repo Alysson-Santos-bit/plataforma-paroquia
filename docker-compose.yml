@@ -1,23 +1,8 @@
 services:
-  backend:
-    build: ./backend
-    ports:
-      - "8080:8080"
-    depends_on:
-      - db
-    environment:
-      - DATABASE_URL=postgres://user:password@db:5432/paroquia_db?sslmode=disable
-
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-    # A seção 'volumes' foi removida para garantir que os arquivos da imagem sejam usados.
-    environment:
-      - CHOKIDAR_USEPOLLING=true
-
   db:
     image: postgres:14-alpine
+    container_name: paroquia-db
+    restart: always
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
@@ -26,6 +11,32 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d paroquia_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: paroquia-backend
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: "host=db user=user password=password dbname=paroquia_db port=5432 sslmode=disable"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    container_name: paroquia-frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    # A linha de volumes foi removida para garantir que a imagem construída seja sempre usada.
+    # isto resolve problemas de cache e ficheiros "fantasma".
 
 volumes:
   postgres_data:

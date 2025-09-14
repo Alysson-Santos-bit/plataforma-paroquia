@@ -2,8 +2,8 @@ package main
 
 import (
 	"log"
-	"net/http"
 	"os"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -11,104 +11,94 @@ import (
 	"gorm.io/gorm"
 )
 
-// DB é a instância global do banco de dados
-var DB *gorm.DB
-
-// connectDatabase inicializa a conexão com o banco de dados PostgreSQL
-func connectDatabase() {
-	var err error
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		dsn = "postgres://user:password@localhost:5432/paroquia_db?sslmode=disable"
-		log.Println("DATABASE_URL não definida, usando valor padrão.")
-	}
-
-	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		log.Fatal("Falha ao conectar ao banco de dados:", err)
-	}
-
-	log.Println("Conexão com o banco de dados estabelecida com sucesso.")
-
-	// AutoMigrate vai criar as tabelas baseadas nos modelos (structs)
-	err = DB.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &Registration{})
-	if err != nil {
-		log.Fatal("Falha ao migrar o banco de dados:", err)
-	}
-	log.Println("Banco de dados migrado com sucesso.")
-}
+// Variável global para o banco de dados, acessível por outros ficheiros do pacote
+var db *gorm.DB
+var err error
 
 func main() {
-	// Inicializa a conexão com o banco
-	connectDatabase()
-	seedDatabase() // Popula o banco com dados iniciais (opcional)
+	// --- NOSSA MENSAGEM DE VERIFICAÇÃO FINAL ---
+	log.Println("--- EXECUTANDO VERSÃO FINAL COM CORS ESPECÍFICO E HEALTHCHECK ---")
 
-	// Inicializa o roteador Gin
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		dsn = "host=db user=user password=password dbname=paroquia_db port=5432 sslmode=disable"
+	}
+
+	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		log.Fatal("Não foi possível conectar ao banco de dados:", err)
+	}
+	log.Println("Conexão com o banco de dados estabelecida com sucesso.")
+
+	// Migra os modelos definidos em models.go
+	db.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &Registration{})
+	log.Println("Banco de dados migrado com sucesso.")
+
+	// Adiciona dados iniciais se as tabelas estiverem vazias
+	seedDatabase()
+
 	router := gin.Default()
 
-	// Configura o CORS (Cross-Origin Resource Sharing) para permitir requisições do frontend
-	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"}, // URL do seu frontend React
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
-		ExposeHeaders:    []string{"Content-Length"},
+	// --- CONFIGURAÇÃO DE CORS ESPECÍFICA E ROBUSTA ---
+	// Em vez de permitir qualquer origem, especificamos exatamente a origem do nosso frontend.
+	config := cors.Config{
+		AllowOrigins:     []string{"https://glorious-palm-tree-g4p549q76rqg29q96-3000.app.github.dev"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type"},
 		AllowCredentials: true,
-	}))
+		MaxAge:           12 * time.Hour,
+	}
+	router.Use(cors.New(config))
 
 	// Agrupa as rotas da API sob o prefixo /api
 	api := router.Group("/api")
 	{
-		// Rotas de autenticação
 		api.POST("/register", RegisterUser)
 		api.POST("/login", LoginUser)
-
-		// Rotas de informações públicas
 		api.GET("/parish-info", GetParishInfo)
 		api.GET("/services", GetServices)
-		api.GET("/pastorals", GetPastorals)
-
-		// Rotas protegidas (exemplo, requerem autenticação no futuro)
+		api.GET("/pastorais", GetPastorals)
 		api.POST("/registrations", CreateRegistration)
 	}
 
-	// Rota de teste
+	// Rota de teste para verificar se o servidor está no ar
 	router.GET("/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"message": "pong"})
+		c.JSON(200, gin.H{
+			"message": "pong",
+		})
 	})
 
-	log.Println("Servidor backend iniciado em http://localhost:8080")
-	// Inicia o servidor na porta 8080
-	if err := router.Run(":8080"); err != nil {
-		log.Fatal("Falha ao iniciar o servidor:", err)
-	}
+	log.Printf("Servidor backend iniciado em http://localhost:8080")
+	router.Run(":8080")
 }
 
-// seedDatabase popula o banco com alguns dados iniciais para teste
+// seedDatabase insere os dados iniciais no banco de dados, se necessário
 func seedDatabase() {
-	// Verifica se os serviços já existem para não duplicar
-	var count int64
-	DB.Model(&Service{}).Count(&count)
-	if count == 0 {
-		services := []Service{
-			{Name: "Batismo - Curso de Pais e Padrinhos", Description: "Inscrição para o curso preparatório para o batismo de crianças."},
-			{Name: "Catequese Infantil", Description: "Inscrições para a catequese para crianças e pré-adolescentes."},
-			{Name: "Catequese de Adultos", Description: "Preparação para os sacramentos da iniciação cristã para adultos."},
-			{Name: "Curso de Noivos", Description: "Curso preparatório obrigatório para casais que desejam se casar na igreja."},
-			{Name: "Encontro de Casais com Cristo (ECC)", Description: "Movimento da Igreja Católica para casais."},
-			{Name: "Agendamento de Casamento", Description: "Reserve a data para a sua cerimônia de casamento na paróquia."},
+	var serviceCount int64
+	db.Model(&Service{}).Count(&serviceCount)
+	if serviceCount == 0 {
+		initialServices := []Service{
+			{Name: "Batismo (Curso de Pais e Padrinhos)", Description: "Prepare-se para o sacramento do batismo, o primeiro passo na vida cristã."},
+			{Name: "Catequese Infantil", Description: "Iniciação à vida cristã para crianças, preparando para a Primeira Eucaristia e Crisma."},
+			{Name: "Catequese de Adultos", Description: "Para adultos que desejam receber os sacramentos da iniciação cristã."},
+			{Name: "Curso de Noivos", Description: "Preparação para o sacramento do matrimônio, fortalecendo os laços do casal."},
+			{Name: "Matrimônio", Description: "Agende a celebração do seu casamento em nossa paroquia."},
+			{Name: "Encontro de Casais com Cristo (ECC)", Description: "Uma experiência para renovar o amor e a fé no matrimônio."},
 		}
-		DB.Create(&services)
+		db.Create(&initialServices)
 		log.Println("Serviços iniciais cadastrados.")
 	}
 
-	DB.Model(&Pastoral{}).Count(&count)
-	if count == 0 {
-		pastorals := []Pastoral{
-			{Name: "Pastoral da Acolhida", Description: "Responsável por acolher os fiéis nas missas e eventos.", MeetingInfo: "Reuniões toda primeira sexta-feira do mês, às 19h30, no salão paroquial."},
-			{Name: "Pastoral do Dízimo", Description: "Conscientização e organização da contribuição do dízimo.", MeetingInfo: "Reuniões no segundo sábado do mês, às 10h00, na sala 2."},
-			{Name: "Ministério de Música", Description: "Responsável pelos cantos e louvores nas celebrações.", MeetingInfo: "Ensaios todas as quintas-feiras, às 20h00, na igreja."},
+	var pastoralCount int64
+	db.Model(&Pastoral{}).Count(&pastoralCount)
+	if pastoralCount == 0 {
+		initialPastorals := []Pastoral{
+			{Name: "Pastoral da Acolhida", Description: "Recebemos com alegria todos que chegam para as celebrações.", MeetingTime: "Durante as missas", MeetingLocation: "Entrada da Igreja"},
+			{Name: "Pastoral do Dízimo", Description: "Conscientização sobre a importância da contribuição para a manutenção da casa do Pai.", MeetingTime: "Primeira terça-feira do mês, 20h", MeetingLocation: "Salão Paroquial"},
+			{Name: "Legião de Maria", Description: "Movimento de leigos com a missão de evangelizar e visitar os doentes.", MeetingTime: "Toda segunda-feira, 15h", MeetingLocation: "Sala 2"},
 		}
-		DB.Create(&pastorals)
+		db.Create(&initialPastorals)
 		log.Println("Pastorais iniciais cadastradas.")
 	}
 }
+
