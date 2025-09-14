@@ -1,80 +1,80 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
-// Chave secreta para assinar os tokens JWT.
-// Num ambiente de produção, isto DEVE vir de uma variável de ambiente segura.
-var jwtKey = []byte("chave_secreta_super_segura_mudar_em_producao")
-
-// Claims define a estrutura dos dados que guardamos dentro do token JWT.
-type Claims struct {
-	UserID uint   `json:"user_id"`
-	Name   string `json:"name"`
-	jwt.RegisteredClaims
+// --- Estrutura para entrada de dados de registo ---
+type RegisterInput struct {
+	Name     string `json:"name" binding:"required"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=6"`
 }
 
 // RegisterUser lida com o registo de um novo utilizador.
 func RegisterUser(c *gin.Context) {
-	var newUser User
-	if err := c.ShouldBindJSON(&newUser); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados de entrada inválidos"})
+	var input RegisterInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados inválidos: " + err.Error()})
 		return
 	}
 
-	// Criptografa a senha antes de guardar
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newUser.Password), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao processar a senha"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Falha ao processar a senha"})
 		return
 	}
-	newUser.Password = string(hashedPassword)
 
-	// Guarda o novo utilizador na base de dados
-	if result := db.Create(&newUser); result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Não foi possível registar o utilizador"})
+	user := User{
+		Name:     input.Name,
+		Email:    input.Email,
+		Password: string(hashedPassword),
+	}
+
+	result := db.Create(&user)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Não foi possível registar o utilizador. O e-mail já pode existir."})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Utilizador registado com sucesso!"})
 }
 
-// LoginUser lida com a autenticação de um utilizador.
+// LoginUser lida com a autenticação do utilizador.
 func LoginUser(c *gin.Context) {
-	var loginDetails struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
-
-	if err := c.ShouldBindJSON(&loginDetails); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados de entrada inválidos"})
-		return
-	}
-
+	var input LoginInput
 	var user User
-	// Encontra o utilizador pelo e-mail
-	if result := db.Where("email = ?", loginDetails.Email).First(&user); result.Error != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "E-mail ou senha inválidos"})
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados inválidos"})
 		return
 	}
 
-	// Compara a senha enviada com a senha criptografada na base de dados
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginDetails.Password)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "E-mail ou senha inválidos"})
+	if err := db.Where("email = ?", input.Email).First(&user).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Utilizador não encontrado."})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro no servidor."})
 		return
 	}
 
-	// Se as credenciais estiverem corretas, cria o token JWT
-	expirationTime := time.Now().Add(24 * time.Hour) // Token válido por 24 horas
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Senha incorreta."})
+		return
+	}
+
+	expirationTime := time.Now().Add(24 * time.Hour)
+	// Correção: Inicializa a estrutura JWT embutida corretamente.
 	claims := &Claims{
 		UserID: user.ID,
-		Name:   user.Name,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 		},
@@ -83,50 +83,43 @@ func LoginUser(c *gin.Context) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString(jwtKey)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Não foi possível gerar o token de acesso"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Não foi possível gerar o token"})
 		return
 	}
 
-	// Envia o token e o nome do utilizador de volta para o frontend
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Login bem-sucedido!",
 		"token":   tokenString,
 		"user": gin.H{
+			"id":    user.ID,
 			"name":  user.Name,
 			"email": user.Email,
 		},
 	})
 }
 
+// --- Handlers para os dados da paróquia ---
 
-// GetParishInfo retorna informações estáticas sobre a paróquia.
 func GetParishInfo(c *gin.Context) {
 	info := gin.H{
-		"name":    "Paróquia Santo Antônio de Marília - SP",
-		"history": "Aqui vai um resumo da história da Paróquia Santo Antônio, destacando momentos importantes, a construção da igreja e o crescimento da comunidade ao longo dos anos...",
-		"address": "Av. Santo Antônio, 777 - Centro, Marília - SP",
-		"social": gin.H{
-			"instagram": "https://www.instagram.com/paroquiasantoantoniomarilia/",
-			"facebook":  "https://www.facebook.com/paroquiasantoantoniomarilia/",
-		},
+		"name":    "Paróquia Santo Antônio de Marília",
+		"history": "A Paróquia Santo Antônio de Marília, confiada aos cuidados dos Frades Franciscanos Capuchinhos, tem uma rica história de fé e serviço à comunidade. Desde a sua fundação, tem sido um farol de esperança, oferecendo orientação espiritual, celebrando os sacramentos e promovendo a caridade. Com uma forte devoção a Santo Antônio, conhecido como o 'santo do povo', a paróquia é um ponto de encontro para os fiéis, um lugar de oração, e um centro de atividades pastorais que buscam viver o Evangelho no dia a dia.",
 	}
 	c.JSON(http.StatusOK, info)
 }
 
-// GetServices retorna a lista de serviços oferecidos pela paróquia.
 func GetServices(c *gin.Context) {
 	var services []Service
-	if result := db.Find(&services); result.Error != nil {
+	if err := db.Find(&services).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar serviços"})
 		return
 	}
 	c.JSON(http.StatusOK, services)
 }
 
-// GetPastorals retorna a lista de pastorais.
-func GetPastorals(c *gin.Context) {
+func GetPastorais(c *gin.Context) {
 	var pastorals []Pastoral
-	if result := db.Find(&pastorals); result.Error != nil {
+	if err := db.Find(&pastorals).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar pastorais"})
 		return
 	}
@@ -135,20 +128,44 @@ func GetPastorals(c *gin.Context) {
 
 // CreateRegistration lida com a inscrição de um utilizador num serviço.
 func CreateRegistration(c *gin.Context) {
-	var registration Registration
-	if err := c.ShouldBindJSON(&registration); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados de inscrição inválidos"})
+	var input struct {
+		ServiceID uint `json:"service_id" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID do serviço é obrigatório."})
 		return
 	}
 
-	// Aqui, num sistema real, iríamos verificar se o utilizador está autenticado (usando o token JWT)
-	// Por agora, vamos assumir que o `UserID` é enviado corretamente.
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Utilizador não autenticado."})
+		return
+	}
+
+	var existingReg Registration
+	if err := db.Where("user_id = ? AND service_id = ?", userID, input.ServiceID).First(&existingReg).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "Você já está inscrito neste serviço."})
+		return
+	}
+
+	registration := Registration{
+		UserID:    userID.(uint),
+		ServiceID: input.ServiceID,
+		Status:    "Pendente",
+	}
 
 	if result := db.Create(&registration); result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Não foi possível completar a inscrição"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Não foi possível processar a inscrição."})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Inscrição realizada com sucesso!"})
+	var service Service
+	db.First(&service, input.ServiceID)
+
+	log.Printf("Utilizador ID %d inscreveu-se no serviço ID %d (%s)", userID, input.ServiceID, service.Name)
+	c.JSON(http.StatusOK, gin.H{"message": "Inscrição em '" + service.Name + "' realizada com sucesso!"})
 }
+
+    
 
