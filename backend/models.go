@@ -11,7 +11,7 @@ type User struct {
 	gorm.Model
 	Name     string `json:"name"`
 	Email    string `json:"email" gorm:"unique"`
-	Password string `json:"-"` // O hífen indica para não expor este campo no JSON
+	Password string `json:"-" gorm:"size:255"`
 }
 
 // Service representa um serviço ou sacramento oferecido pela paróquia.
@@ -34,9 +34,18 @@ type Registration struct {
 	gorm.Model
 	UserID    uint    `json:"user_id"`
 	ServiceID uint    `json:"service_id"`
-	Status    string  `json:"status"`  // Ex: "Pendente", "Confirmada", "Concluída"
-	// A etiqueta gorm é a correção crucial para o Preload funcionar corretamente.
-	Service   Service `json:"service" gorm:"foreignKey:ServiceID"` 
+	Status    string  `json:"status"`
+	Service   Service `json:"service" gorm:"foreignKey:ServiceID"`
+}
+
+// Contribution representa um registo de contribuição do dízimo.
+type Contribution struct {
+	gorm.Model
+	UserID uint    `json:"user_id"`
+	Value  float64 `json:"value"`
+	Method string  `json:"method"` // Ex: "PIX", "Cartão", "Boleto"
+	Status string  `json:"status"` // Ex: "Pendente", "Confirmado"
+	User   User    `json:"user" gorm:"foreignKey:UserID"`
 }
 
 // LoginInput define a estrutura para os dados de entrada do login.

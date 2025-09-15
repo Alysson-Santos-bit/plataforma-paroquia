@@ -21,6 +21,14 @@ const HomeIcon = (props) => (
     </svg>
 );
 
+// Componente para o QR Code (Exemplo)
+const PixQrCodeIcon = (props) => (
+    <svg {...props} viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#000" d="M128 0H0v128h128V0ZM96 96H32V32h64v64Zm128-96H128v128h128V0Zm-32 96h-64V32h64v64ZM0 256h128V128H0v128Zm32-96h64v64H32v-64Zm224 96H128V128h128v128Zm-32-96h-64v64h-32v-32h-32v32h-32v32h64v-32h32v-32h32v32h32v-64Z"/>
+    </svg>
+);
+
+
 // --- Componente Principal da Aplicação ---
 export default function App() {
   // Estados da aplicação
@@ -36,8 +44,11 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
 
-  // Novo estado para as inscrições do utilizador
+  // Estados das inscrições e contribuições
   const [myRegistrations, setMyRegistrations] = useState([]);
+  const [contributionAmount, setContributionAmount] = useState('');
+  const [showPixModal, setShowPixModal] = useState(false);
+
 
   // Efeito para buscar os dados públicos da paróquia
   useEffect(() => {
@@ -50,7 +61,7 @@ export default function App() {
         ]);
 
         if (!infoRes.ok || !servicesRes.ok || !pastoralsRes.ok) {
-           const errorData = await infoRes.json(); // Tenta ler o corpo do erro
+           const errorData = await infoRes.json();
            throw new Error(errorData.error || 'Falha em buscar dados do servidor.');
         }
 
@@ -88,9 +99,7 @@ export default function App() {
         const token = localStorage.getItem('token');
         try {
           const res = await fetch(`${API_BASE_URL}/api/my-registrations`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
+            headers: { 'Authorization': `Bearer ${token}` }
           });
 
           if (!res.ok) {
@@ -98,8 +107,7 @@ export default function App() {
             throw new Error(errorData.error || 'Não foi possível buscar as suas inscrições.');
           }
           const data = await res.json();
-          // Log de diagnóstico para o frontend
-          console.log("Dados de inscrições recebidos:", data);
+          console.log("Dados de inscrições recebidos (geral):", data);
           setMyRegistrations(data || []);
         } catch (err) {
            console.error("Erro detalhado ao buscar inscrições:", err);
@@ -109,7 +117,7 @@ export default function App() {
     };
 
     fetchMyRegistrations();
-  }, [currentUser]); // Executa sempre que o currentUser mudar
+  }, [currentUser]);
 
   // Função para mostrar notificações
   const showNotification = (message, type = 'success') => {
@@ -119,12 +127,14 @@ export default function App() {
     }, 5000);
   };
 
-  // Funções de controlo do modal de autenticação
+  // Funções de controlo dos modais
   const handleAuthClick = () => setShowAuthModal(true);
-  const handleCloseModal = () => setShowAuthModal(false);
+  const handleCloseModal = () => {
+    setShowAuthModal(false);
+    setShowPixModal(false);
+  }
 
   // --- Lógica de Autenticação ---
-
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     const { name, email, password } = e.target.elements;
@@ -140,7 +150,7 @@ export default function App() {
       if (!res.ok) throw new Error(data.error || 'Erro desconhecido');
 
       showNotification(data.message);
-      setIsRegistering(false); // Volta para a tela de login
+      setIsRegistering(false);
     } catch (err) {
       console.error("Erro detalhado do registo:", err);
       showNotification(`Erro ao registar: ${err.message}`, 'error');
@@ -177,11 +187,11 @@ export default function App() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setCurrentUser(null);
-    setMyRegistrations([]); // Limpa as inscrições ao fazer logout
+    setMyRegistrations([]);
     showNotification('Sessão encerrada com sucesso!');
   };
 
-  // --- Lógica de Inscrição nos Serviços ---
+  // --- Lógica de Inscrição e Contribuição ---
   const handleRegistration = async (serviceId) => {
     if (!currentUser) {
       showNotification('Por favor, faça login para se inscrever.', 'error');
@@ -192,18 +202,14 @@ export default function App() {
     try {
         const res = await fetch(`${API_BASE_URL}/api/registrations`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
             body: JSON.stringify({ service_id: serviceId })
         });
         const data = await res.json();
-        if (!res.ok) {
-            throw new Error(data.error || 'Não foi possível completar a inscrição.');
-        }
+        if (!res.ok) throw new Error(data.error || 'Não foi possível completar a inscrição.');
+        
         showNotification(data.message);
-        // Atualiza a lista de inscrições após uma nova inscrição
+        
         const updatedRegsRes = await fetch(`${API_BASE_URL}/api/my-registrations`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -215,14 +221,43 @@ export default function App() {
     }
   };
 
+  const handlePixContribution = async () => {
+    const value = parseFloat(contributionAmount);
+    if (!value || value <= 0) {
+      showNotification('Por favor, insira um valor válido.', 'error');
+      return;
+    }
 
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-screen bg-gray-100"><p className="text-xl">Carregando...</p></div>;
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/contributions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
+            body: JSON.stringify({ value: value, method: 'PIX' })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Não foi possível registar a contribuição.');
+        
+        setShowPixModal(true); // Mostra o modal do PIX
+        showNotification("Leia o QR Code ou copie a chave para contribuir.");
+
+    } catch (err) {
+        showNotification(err.message, 'error');
+    }
+  };
+  
+  const copyPixKey = () => {
+    const pixKey = "000.000.000-00"; // Chave PIX de exemplo
+    navigator.clipboard.writeText(pixKey).then(() => {
+        showNotification('Chave PIX copiada!');
+    }, (err) => {
+        showNotification('Falha ao copiar a chave.', 'error');
+    });
   }
 
-  if (error) {
-    return <div className="flex justify-center items-center h-screen bg-red-100"><p className="text-xl text-red-700">{error}</p></div>;
-  }
+
+  if (isLoading) return <div className="flex justify-center items-center h-screen bg-gray-100"><p className="text-xl">Carregando...</p></div>;
+  if (error) return <div className="flex justify-center items-center h-screen bg-red-100"><p className="text-xl text-red-700">{error}</p></div>;
 
   return (
     <div className="bg-gray-50 min-h-screen font-sans">
@@ -260,28 +295,56 @@ export default function App() {
 
       {/* Conteúdo Principal */}
       <main className="container mx-auto px-6 py-8">
-        {/* Secção "Minhas Inscrições" - Visível apenas se logado */}
         {currentUser && (
-          <section id="my-registrations" className="mb-12">
-            <h2 className="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-yellow-500 pb-2">Minhas Inscrições</h2>
-            <div className="bg-white p-6 rounded-xl shadow-lg">
-              {myRegistrations.length > 0 ? (
-                <ul className="space-y-4">
-                  {myRegistrations.map(reg => (
-                    <li key={reg.ID} className="p-4 bg-gray-100 rounded-lg flex justify-between items-center">
-                      <div>
-                        {/* AQUI ESTÁ A CORREÇÃO: reg.service em vez de reg.Service */}
-                        <h3 className="font-semibold text-lg text-gray-800">{reg.service?.name || 'Serviço não encontrado'}</h3>
-                        <p className="text-sm text-gray-600">Status: <span className="font-medium text-yellow-600">{reg.status}</span></p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-gray-600">Você ainda não se inscreveu em nenhum serviço.</p>
-              )}
-            </div>
-          </section>
+          <>
+            {/* Secção "Área do Paroquiano" */}
+            <section id="parishioner-area" className="mb-12 bg-white p-6 rounded-xl shadow-lg">
+                <h2 className="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-yellow-500 pb-2">Área do Paroquiano</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Minhas Inscrições */}
+                    <div>
+                        <h3 className="text-2xl font-semibold text-gray-700 mb-4">Minhas Inscrições</h3>
+                        {myRegistrations.length > 0 ? (
+                            <ul className="space-y-4">
+                            {myRegistrations.map(reg => {
+                                // --- NOSSO DIAGNÓSTICO FINAL ---
+                                console.log("A renderizar inscrição individual:", reg);
+                                return (
+                                    <li key={reg.ID} className="p-4 bg-gray-100 rounded-lg">
+                                        <h4 className="font-semibold text-lg text-gray-800">{reg.service?.name || 'Serviço não encontrado'}</h4>
+                                        <p className="text-sm text-gray-600">Status: <span className="font-medium text-yellow-600">{reg.status}</span></p>
+                                    </li>
+                                )
+                            })}
+                            </ul>
+                        ) : (
+                            <p className="text-gray-600">Você ainda não se inscreveu em nenhum serviço.</p>
+                        )}
+                    </div>
+
+                    {/* Contribuição do Dízimo */}
+                    <div>
+                        <h3 className="text-2xl font-semibold text-gray-700 mb-4">Contribuição</h3>
+                        <div className="p-4 bg-gray-100 rounded-lg">
+                            <p className="text-gray-700 mb-4">A sua contribuição generosa ajuda a manter as obras da nossa paróquia. Deus lhe pague!</p>
+                            <div className="flex items-center space-x-2 mb-4">
+                                <span className="text-gray-800 font-bold text-lg">R$</span>
+                                <input 
+                                    type="number" 
+                                    value={contributionAmount}
+                                    onChange={(e) => setContributionAmount(e.target.value)}
+                                    placeholder="0,00"
+                                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                                />
+                            </div>
+                            <button onClick={handlePixContribution} className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full transition duration-300">
+                                Contribuir com PIX
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+          </>
         )}
 
         {/* História da Paróquia */}
@@ -335,8 +398,9 @@ export default function App() {
             {isRegistering ? (
               // Formulário de Registo
               <div>
-                <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Criar Conta</h2>
+                <h2 className="text-2xl font-bold mb-6 text-center">Criar Conta</h2>
                 <form onSubmit={handleRegisterSubmit}>
+                  {/* ... campos de registo ... */}
                   <div className="mb-4">
                     <label className="block text-gray-700 mb-2" htmlFor="name">Nome Completo</label>
                     <input className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" type="text" id="name" name="name" required />
@@ -349,18 +413,17 @@ export default function App() {
                     <label className="block text-gray-700 mb-2" htmlFor="password">Senha (mín. 6 caracteres)</label>
                     <input className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" type="password" id="password" name="password" required />
                   </div>
-                  <button className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-full transition duration-300" type="submit">Registar</button>
+                  <button className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-full" type="submit">Registar</button>
                 </form>
-                <p className="text-center text-sm text-gray-600 mt-4">
-                  Já tem uma conta? <button onClick={() => setIsRegistering(false)} className="text-blue-500 hover:underline">Faça o login</button>
-                </p>
+                <p className="text-center mt-4">Já tem uma conta? <button onClick={() => setIsRegistering(false)} className="text-blue-500 hover:underline">Faça o login</button></p>
               </div>
             ) : (
               // Formulário de Login
               <div>
-                <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Login</h2>
+                <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
                 <form onSubmit={handleLoginSubmit}>
-                  <div className="mb-4">
+                   {/* ... campos de login ... */}
+                   <div className="mb-4">
                     <label className="block text-gray-700 mb-2" htmlFor="email">E-mail</label>
                     <input className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" type="email" id="email" name="email" required />
                   </div>
@@ -368,13 +431,32 @@ export default function App() {
                     <label className="block text-gray-700 mb-2" htmlFor="password">Senha</label>
                     <input className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" type="password" id="password" name="password" required />
                   </div>
-                  <button className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full transition duration-300" type="submit">Entrar</button>
+                  <button className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full" type="submit">Entrar</button>
                 </form>
-                <p className="text-center text-sm text-gray-600 mt-4">
-                  Não tem uma conta? <button onClick={() => setIsRegistering(true)} className="text-blue-500 hover:underline">Cadastre-se</button>
-                </p>
+                <p className="text-center mt-4">Não tem uma conta? <button onClick={() => setIsRegistering(true)} className="text-blue-500 hover:underline">Cadastre-se</button></p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal do PIX */}
+      {showPixModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-40" onClick={handleCloseModal}>
+          <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm relative text-center" onClick={e => e.stopPropagation()}>
+            <button onClick={handleCloseModal} className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+            <h2 className="text-2xl font-bold mb-4">Contribuição via PIX</h2>
+            <p className="text-gray-600 mb-4">Leia o QR Code com a app do seu banco ou copie a chave abaixo.</p>
+            <div className="flex justify-center mb-4">
+              <PixQrCodeIcon className="w-48 h-48" />
+            </div>
+            <div className="bg-gray-100 p-3 rounded-lg">
+                <p className="text-gray-600 text-sm">Chave PIX (CPF - Exemplo):</p>
+                <p className="font-mono text-lg font-bold">000.000.000-00</p>
+            </div>
+            <button onClick={copyPixKey} className="w-full mt-4 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-full transition duration-300">
+                Copiar Chave
+            </button>
           </div>
         </div>
       )}

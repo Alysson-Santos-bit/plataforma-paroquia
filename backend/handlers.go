@@ -56,23 +56,15 @@ func LoginUser(c *gin.Context) {
 		return
 	}
 
-	// Usamos o log para depuração
-	log.Printf("--- DIAGNÓSTICO DE LOGIN: Tentativa para o e-mail: %s ---", input.Email)
-
 	if err := db.Where("email = ?", input.Email).First(&user).Error; err != nil {
-		log.Printf("--- DIAGNÓSTICO DE LOGIN: Utilizador não encontrado para o e-mail %s: %v ---", input.Email, err)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Utilizador não encontrado."})
 		return
 	}
-	log.Printf("--- DIAGNÓSTICO DE LOGIN: Utilizador encontrado: %s (ID: %d) ---", user.Name, user.ID)
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
-		log.Printf("--- DIAGNÓSTICO DE LOGIN: Erro na comparação de senha para o utilizador %s: %v ---", input.Email, err)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Senha incorreta."})
 		return
 	}
-	log.Printf("--- DIAGNÓSTICO DE LOGIN: Comparação de senha bem-sucedida para o utilizador %s ---", input.Email)
-
 
 	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := &Claims{
@@ -178,22 +170,45 @@ func GetMyRegistrations(c *gin.Context) {
 	}
 
 	var registrations []Registration
-	// Usa Preload("Service") para incluir os detalhes do serviço
 	if err := db.Preload("Service").Where("user_id = ?", userID).Find(&registrations).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar inscrições."})
 		return
 	}
 
-	// --- NOSSO DIAGNÓSTICO ---
-	// Vamos imprimir no terminal o que a base de dados retornou.
-	log.Printf("--- DIAGNÓSTICO DE INSCRIÇÕES PARA USER ID %d ---", userID)
-	for _, reg := range registrations {
-		log.Printf("Inscrição ID: %d, Serviço ID: %d, Detalhes do Serviço: %+v", reg.ID, reg.ServiceID, reg.Service)
-	}
-	// -------------------------
-
 	c.JSON(http.StatusOK, registrations)
 }
 
-    
+// CreateContribution lida com o registo de uma nova contribuição.
+func CreateContribution(c *gin.Context) {
+	var input struct {
+		Value  float64 `json:"value" binding:"required,gt=0"`
+		Method string  `json:"method" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados da contribuição inválidos: " + err.Error()})
+		return
+	}
+
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Utilizador não autenticado."})
+		return
+	}
+
+	contribution := Contribution{
+		UserID: userID.(uint),
+		Value:  input.Value,
+		Method: input.Method,
+		Status: "Pendente", // O status pode ser atualizado por um webhook de pagamento no futuro
+	}
+
+	if result := db.Create(&contribution); result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Não foi possível registar a contribuição."})
+		return
+	}
+
+	log.Printf("Utilizador ID %d registou uma contribuição de R$%.2f via %s", userID, input.Value, input.Method)
+	c.JSON(http.StatusOK, gin.H{"message": "Registo de contribuição recebido com sucesso!"})
+}
 

@@ -31,16 +31,15 @@ func main() {
 		log.Fatal("Falha ao conectar ao banco de dados")
 	}
 
-	// Migra o schema
-	db.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &Registration{}, &LoginInput{})
+	// Migra o schema, incluindo a nova tabela Contribution
+	db.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &Registration{}, &LoginInput{}, &Contribution{})
 	seedDatabase()
 
 	router := gin.Default()
 
-	// Configuração de CORS Específica e Segura
+	// Configuração de CORS
 	config := cors.Config{
-		// ATENÇÃO: A URL do frontend tem de ser exata.
-		AllowOrigins:     []string{"https://glorious-palm-tree-g4p549q76rqg29q96-3000.app.github.dev"},
+		AllowOrigins:     []string{"*"}, // Em produção, mude para o seu domínio real
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -49,7 +48,6 @@ func main() {
 	}
 	router.Use(cors.New(config))
 
-
 	// Rotas Públicas
 	api := router.Group("/api")
 	{
@@ -57,9 +55,9 @@ func main() {
 		api.POST("/login", LoginUser)
 		api.GET("/parish-info", GetParishInfo)
 		api.GET("/services", GetServices)
-		api.GET("/pastorais", GetPastorais) 
+		api.GET("/pastorais", GetPastorais)
 	}
-	
+
 	router.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "pong"})
 	})
@@ -70,6 +68,8 @@ func main() {
 	{
 		protected.POST("/registrations", CreateRegistration)
 		protected.GET("/my-registrations", GetMyRegistrations)
+		// Nova rota para contribuições
+		protected.POST("/contributions", CreateContribution)
 	}
 
 	log.Println("Servidor backend iniciado em http://localhost:8080")
@@ -125,6 +125,7 @@ func seedDatabase() {
             {Name: "Agendamento de Casamento", Description: "Reserve a data para a sua cerimônia de casamento na paróquia."},
 						{Name: "Crisma", Description: "Sacramento da confirmação para jovens e adultos."},
 						{Name: "Primeira Eucaristia", Description: "Preparação para receber o sacramento da Eucaristia pela primeira vez."},
+						{Name: "Agendamento com o Padre", Description: "Marque um horário para confissão ou orientação espiritual."},
         }
         db.Create(&services)
     }
