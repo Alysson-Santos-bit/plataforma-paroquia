@@ -8,10 +8,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 )
 
-// --- Estrutura para entrada de dados de registo ---
+// --- Estrutura para entrada de dados ---
 type RegisterInput struct {
 	Name     string `json:"name" binding:"required"`
 	Email    string `json:"email" binding:"required,email"`
@@ -57,22 +56,25 @@ func LoginUser(c *gin.Context) {
 		return
 	}
 
+	// Usamos o log para depuração
+	log.Printf("--- DIAGNÓSTICO DE LOGIN: Tentativa para o e-mail: %s ---", input.Email)
+
 	if err := db.Where("email = ?", input.Email).First(&user).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Utilizador não encontrado."})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro no servidor."})
+		log.Printf("--- DIAGNÓSTICO DE LOGIN: Utilizador não encontrado para o e-mail %s: %v ---", input.Email, err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Utilizador não encontrado."})
 		return
 	}
+	log.Printf("--- DIAGNÓSTICO DE LOGIN: Utilizador encontrado: %s (ID: %d) ---", user.Name, user.ID)
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
+		log.Printf("--- DIAGNÓSTICO DE LOGIN: Erro na comparação de senha para o utilizador %s: %v ---", input.Email, err)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Senha incorreta."})
 		return
 	}
+	log.Printf("--- DIAGNÓSTICO DE LOGIN: Comparação de senha bem-sucedida para o utilizador %s ---", input.Email)
+
 
 	expirationTime := time.Now().Add(24 * time.Hour)
-	// Correção: Inicializa a estrutura JWT embutida corretamente.
 	claims := &Claims{
 		UserID: user.ID,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -103,7 +105,7 @@ func LoginUser(c *gin.Context) {
 func GetParishInfo(c *gin.Context) {
 	info := gin.H{
 		"name":    "Paróquia Santo Antônio de Marília",
-		"history": "A Paróquia Santo Antônio de Marília, confiada aos cuidados dos Frades Franciscanos Capuchinhos, tem uma rica história de fé e serviço à comunidade. Desde a sua fundação, tem sido um farol de esperança, oferecendo orientação espiritual, celebrando os sacramentos e promovendo a caridade. Com uma forte devoção a Santo Antônio, conhecido como o 'santo do povo', a paróquia é um ponto de encontro para os fiéis, um lugar de oração, e um centro de atividades pastorais que buscam viver o Evangelho no dia a dia.",
+		"history": "A Paróquia Santo Antônio de Marília, confiada aos cuidados dos Frades Franciscanos Capuchinhos, tem uma rica história de fé e serviço à comunidade...",
 	}
 	c.JSON(http.StatusOK, info)
 }
@@ -165,6 +167,32 @@ func CreateRegistration(c *gin.Context) {
 
 	log.Printf("Utilizador ID %d inscreveu-se no serviço ID %d (%s)", userID, input.ServiceID, service.Name)
 	c.JSON(http.StatusOK, gin.H{"message": "Inscrição em '" + service.Name + "' realizada com sucesso!"})
+}
+
+// GetMyRegistrations devolve as inscrições do utilizador autenticado.
+func GetMyRegistrations(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Utilizador não autenticado."})
+		return
+	}
+
+	var registrations []Registration
+	// Usa Preload("Service") para incluir os detalhes do serviço
+	if err := db.Preload("Service").Where("user_id = ?", userID).Find(&registrations).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar inscrições."})
+		return
+	}
+
+	// --- NOSSO DIAGNÓSTICO ---
+	// Vamos imprimir no terminal o que a base de dados retornou.
+	log.Printf("--- DIAGNÓSTICO DE INSCRIÇÕES PARA USER ID %d ---", userID)
+	for _, reg := range registrations {
+		log.Printf("Inscrição ID: %d, Serviço ID: %d, Detalhes do Serviço: %+v", reg.ID, reg.ServiceID, reg.Service)
+	}
+	// -------------------------
+
+	c.JSON(http.StatusOK, registrations)
 }
 
     
