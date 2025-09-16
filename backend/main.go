@@ -24,22 +24,21 @@ type Claims struct {
 }
 
 func main() {
-	// ... Conexão com o banco de dados ...
 	dsn := "host=db user=user password=password dbname=paroquia_db port=5432 sslmode=disable TimeZone=America/Sao_Paulo"
 	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal("Falha ao conectar ao banco de dados")
 	}
 
-	// Migra o schema
-	db.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &Registration{}, &LoginInput{}, &Contribution{})
+	// Migra o schema, garantindo que todas as tabelas, incluindo a de horários, sejam criadas.
+	db.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &Registration{}, &LoginInput{}, &Contribution{}, &MassTime{})
 	seedDatabase()
 
 	router := gin.Default()
 
-	// Configuração de CORS Específica e Segura
+	// Configuração de CORS para permitir a comunicação com o frontend
 	config := cors.Config{
-		AllowOrigins:     []string{"*"}, // Simplificado para desenvolvimento
+		AllowOrigins:     []string{"*"}, // Em produção, mude para o seu domínio real
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -48,35 +47,38 @@ func main() {
 	}
 	router.Use(cors.New(config))
 
-	// Rotas Públicas
+	// Agrupamento de rotas da API
 	api := router.Group("/api")
 	{
+		// Rotas Públicas
 		api.POST("/register", RegisterUser)
 		api.POST("/login", LoginUser)
 		api.GET("/parish-info", GetParishInfo)
 		api.GET("/services", GetServices)
 		api.GET("/pastorais", GetPastorais)
+		api.GET("/mass-times", GetMassTimes) // Nova rota para os horários
+
+		// Rotas Protegidas que exigem autenticação
+		protected := api.Group("/")
+		protected.Use(AuthMiddleware())
+		{
+			protected.POST("/registrations", CreateRegistration)
+			protected.GET("/my-registrations", GetMyRegistrations)
+			protected.POST("/contributions", CreateContribution)
+			protected.GET("/my-contributions", GetMyContributions)
+		}
 	}
 
 	router.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "pong"})
 	})
 
-	// Rotas Protegidas
-	protected := api.Group("/")
-	protected.Use(AuthMiddleware())
-	{
-		protected.POST("/registrations", CreateRegistration)
-		protected.GET("/my-registrations", GetMyRegistrations)
-		protected.POST("/contributions", CreateContribution)
-		protected.GET("/my-contributions", GetMyContributions) // Nova rota
-	}
 
 	log.Println("Servidor backend iniciado em http://localhost:8080")
 	router.Run(":8080")
 }
 
-// AuthMiddleware é o nosso "porteiro" para rotas seguras.
+// AuthMiddleware verifica o token JWT para proteger as rotas.
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -85,25 +87,16 @@ func AuthMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		if tokenString == authHeader {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Formato do token inválido"})
-			c.Abort()
-			return
-		}
-
 		claims := &Claims{}
 		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 			return jwtKey, nil
 		})
-
 		if err != nil || !token.Valid {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token inválido ou expirado"})
 			c.Abort()
 			return
 		}
-
 		c.Set("userID", claims.UserID)
 		c.Next()
 	}
@@ -138,6 +131,31 @@ func seedDatabase() {
 		}
 		db.Create(&pastorals)
 	}
-}
 
+	db.Model(&MassTime{}).Count(&count)
+	if count == 0 {
+		massTimes := []MassTime{
+			// Matriz
+			{Day: "Domingo", Time: "07h00", Location: "Matriz Santo Antônio", Description: "Missa"},
+			{Day: "Domingo", Time: "10h30", Location: "Matriz Santo Antônio", Description: "Missa"},
+			{Day: "Domingo", Time: "19h30", Location: "Matriz Santo Antônio", Description: "Missa"},
+			{Day: "Segunda-feira", Time: "19h30", Location: "Matriz Santo Antônio", Description: "Novena N. Sra. Perpétuo Socorro"},
+			{Day: "Quarta-feira", Time: "19h30", Location: "Matriz Santo Antônio", Description: "Novena N. Sra. Perpétuo Socorro"},
+			{Day: "Quinta-feira", Time: "12h00", Location: "Matriz Santo Antônio", Description: "Exposição do Santíssimo"},
+			{Day: "Quinta-feira", Time: "16h00", Location: "Matriz Santo Antônio", Description: "Missa"},
+			{Day: "Sexta-feira", Time: "16h00", Location: "Matriz Santo Antônio", Description: "Missa"},
+			{Day: "Sábado", Time: "16h00", Location: "Matriz Santo Antônio", Description: "Missa"},
+			// Capelas e outros locais
+			{Day: "Domingo", Time: "09h00", Location: "Capela São Carlos", Description: "Missa"},
+			{Day: "Quarta-feira", Time: "19h30", Location: "Capela São Carlos", Description: "Missa"},
+			{Day: "Domingo", Time: "09h00", Location: "Capela São Vicente", Description: "Missa"},
+			{Day: "Quinta-feira", Time: "19h30", Location: "Capela N. Sra. Aparecida", Description: "Missa"},
+			{Day: "Sábado", Time: "19h30", Location: "Capela N. Sra. Aparecida", Description: "Missa"},
+			{Day: "Sábado", Time: "17h00", Location: "Capela N. Sra. de Lourdes", Description: "Missa"},
+			{Day: "Segunda-feira", Time: "16h00", Location: "Cemitério da Saudade", Description: "Missa"},
+			{Day: "4º Domingo do Mês", Time: "10h30", Location: "Círculo Católico Estrela da Manhã", Description: "Missa"},
+		}
+		db.Create(&massTimes)
+	}
+}
 

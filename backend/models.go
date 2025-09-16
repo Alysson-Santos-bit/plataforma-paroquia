@@ -38,19 +38,27 @@ type Registration struct {
 	Service   Service `json:"service" gorm:"foreignKey:ServiceID"`
 }
 
-// Contribution representa um registo de contribuição do dízimo.
+// LoginInput define a estrutura para os dados de entrada do login.
+type LoginInput struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+}
+
+// Contribution representa uma contribuição de dízimo.
 type Contribution struct {
 	gorm.Model
 	UserID uint    `json:"user_id"`
 	Value  float64 `json:"value"`
 	Method string  `json:"method"` // Ex: "PIX", "Cartão", "Boleto"
 	Status string  `json:"status"` // Ex: "Pendente", "Confirmado"
-	User   User    `json:"user" gorm:"foreignKey:UserID"`
 }
 
-// LoginInput define a estrutura para os dados de entrada do login.
-type LoginInput struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
+// MassTime representa um horário de missa ou evento.
+type MassTime struct {
+	gorm.Model
+	Day         string `json:"day"`         // Ex: "Domingo", "Segunda-feira"
+	Time        string `json:"time"`        // Ex: "07h00", "19h30"
+	Location    string `json:"location"`    // Ex: "Matriz", "Capela São Carlos"
+	Description string `json:"description"` // Ex: "Missa", "Novena N. Sra. Perpétuo Socorro"
 }
 

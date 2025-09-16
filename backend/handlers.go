@@ -10,12 +10,16 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// --- Estrutura para entrada de dados ---
+// --- Estruturas para entrada de dados ---
+
+// RegisterInput define a estrutura para os dados de entrada do registo.
 type RegisterInput struct {
 	Name     string `json:"name" binding:"required"`
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required,min=6"`
 }
+
+// --- Funções de Handler ---
 
 // RegisterUser lida com o registo de um novo utilizador.
 func RegisterUser(c *gin.Context) {
@@ -31,7 +35,6 @@ func RegisterUser(c *gin.Context) {
 		return
 	}
 
-	// Cria o utilizador com os dados da entrada
 	user := User{
 		Name:     input.Name,
 		Email:    input.Email,
@@ -93,16 +96,18 @@ func LoginUser(c *gin.Context) {
 	})
 }
 
-// --- Handlers para os dados da paróquia ---
-
+// GetParishInfo devolve informações estáticas sobre a paróquia.
 func GetParishInfo(c *gin.Context) {
 	info := gin.H{
-		"name":    "Paróquia Santo Antônio de Marília",
-		"history": "A Paróquia Santo Antônio de Marília, confiada aos cuidados dos Padres Estigmatinos, tem uma rica história de fé e serviço à comunidade. Desde a sua fundação, tem sido um farol de esperança, oferecendo orientação espiritual, celebrando os sacramentos e promovendo a caridade. Com uma forte devoção a Santo Antônio, conhecido como o 'santo do povo', a paróquia é um ponto de encontro para os fiéis, um lugar de oração, e um centro de atividades pastorais que buscam viver o Evangelho no dia a dia.",
+		"name":              "Paróquia Santo Antônio de Marília",
+		"history":           "A Paróquia Santo Antônio de Marília, confiada aos cuidados dos Padres Estigmatinos, tem uma rica história de fé e serviço à comunidade. Desde a sua fundação, tem sido um farol de esperança, oferecendo orientação espiritual, celebrando os sacramentos e promovendo a caridade. Com uma forte devoção a Santo Antônio, conhecido como o 'santo do povo', a paróquia é um ponto de encontro para os fiéis, um lugar de oração, e um centro de atividades pastorais que buscam viver o Evangelho no dia a dia.",
+		"secretariat_hours": "Segunda a sexta das 8h às 17h30. Sábado das 8h às 12h.",
+		"priest_hours":      "Segunda: 9h30 às 11h e 14h às 15h30. Quarta, quinta e sexta: 9h às 11h30 e 14h às 15h30.",
 	}
 	c.JSON(http.StatusOK, info)
 }
 
+// GetServices devolve a lista de todos os serviços.
 func GetServices(c *gin.Context) {
 	var services []Service
 	if err := db.Find(&services).Error; err != nil {
@@ -112,6 +117,7 @@ func GetServices(c *gin.Context) {
 	c.JSON(http.StatusOK, services)
 }
 
+// GetPastorais devolve a lista de todas as pastorais.
 func GetPastorais(c *gin.Context) {
 	var pastorals []Pastoral
 	if err := db.Find(&pastorals).Error; err != nil {
@@ -119,6 +125,16 @@ func GetPastorais(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, pastorals)
+}
+
+// GetMassTimes devolve todos os horários de missa.
+func GetMassTimes(c *gin.Context) {
+	var massTimes []MassTime
+	if err := db.Order("location, day, time").Find(&massTimes).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar horários de missa."})
+		return
+	}
+	c.JSON(http.StatusOK, massTimes)
 }
 
 // CreateRegistration lida com a inscrição de um utilizador num serviço.
@@ -201,7 +217,7 @@ func CreateContribution(c *gin.Context) {
 		UserID: userID.(uint),
 		Value:  input.Value,
 		Method: input.Method,
-		Status: "Pendente", // O status pode ser atualizado por um admin ou sistema de pagamento
+		Status: "Pendente",
 	}
 
 	if result := db.Create(&contribution); result.Error != nil {
@@ -222,7 +238,6 @@ func GetMyContributions(c *gin.Context) {
 	}
 
 	var contributions []Contribution
-	// Ordena por data de criação, da mais recente para a mais antiga
 	if err := db.Where("user_id = ?", userID).Order("created_at desc").Find(&contributions).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar histórico de contribuições."})
 		return
