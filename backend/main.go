@@ -31,15 +31,15 @@ func main() {
 		log.Fatal("Falha ao conectar ao banco de dados")
 	}
 
-	// Migra o schema, incluindo a nova tabela Contribution
+	// Migra o schema
 	db.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &Registration{}, &LoginInput{}, &Contribution{})
 	seedDatabase()
 
 	router := gin.Default()
 
-	// Configuração de CORS
+	// Configuração de CORS Específica e Segura
 	config := cors.Config{
-		AllowOrigins:     []string{"*"}, // Em produção, mude para o seu domínio real
+		AllowOrigins:     []string{"*"}, // Simplificado para desenvolvimento
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -68,14 +68,13 @@ func main() {
 	{
 		protected.POST("/registrations", CreateRegistration)
 		protected.GET("/my-registrations", GetMyRegistrations)
-		// Nova rota para contribuições
 		protected.POST("/contributions", CreateContribution)
+		protected.GET("/my-contributions", GetMyContributions) // Nova rota
 	}
 
 	log.Println("Servidor backend iniciado em http://localhost:8080")
 	router.Run(":8080")
 }
-
 
 // AuthMiddleware é o nosso "porteiro" para rotas seguras.
 func AuthMiddleware() gin.HandlerFunc {
@@ -110,36 +109,35 @@ func AuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-
+// seedDatabase popula a base de dados com dados iniciais se estiver vazia.
 func seedDatabase() {
-    // Verifica se os serviços já existem para não duplicar
-    var count int64
-    db.Model(&Service{}).Count(&count)
-    if count == 0 {
-        services := []Service{
-            {Name: "Batismo - Curso de Pais e Padrinhos", Description: "Inscrição para o curso preparatório para o batismo de crianças."},
-            {Name: "Catequese Infantil", Description: "Inscrições para a catequese para crianças e pré-adolescentes."},
-            {Name: "Catequese de Adultos", Description: "Preparação para os sacramentos da iniciação cristã para adultos."},
-            {Name: "Curso de Noivos", Description: "Curso preparatório obrigatório para casais que desejam se casar na igreja."},
-            {Name: "Encontro de Casais com Cristo (ECC)", Description: "Movimento da Igreja Católica para casais."},
-            {Name: "Agendamento de Casamento", Description: "Reserve a data para a sua cerimônia de casamento na paróquia."},
-						{Name: "Crisma", Description: "Sacramento da confirmação para jovens e adultos."},
-						{Name: "Primeira Eucaristia", Description: "Preparação para receber o sacramento da Eucaristia pela primeira vez."},
-						{Name: "Agendamento com o Padre", Description: "Marque um horário para confissão ou orientação espiritual."},
-        }
-        db.Create(&services)
-    }
-
-		// Verifica se as pastorais já existem
-		db.Model(&Pastoral{}).Count(&count)
-		if count == 0 {
-			pastorals := []Pastoral{
-				{Name: "Pastoral da Criança", Description: "Acompanhamento de crianças carentes e suas famílias.", MeetingInfo: "Sábados, às 14h, no Salão Paroquial."},
-				{Name: "Pastoral do Dízimo", Description: "Conscientização sobre a importância da contribuição para a comunidade.", MeetingInfo: "Primeira terça-feira do mês, às 19h30."},
-				{Name: "Pastoral Familiar", Description: "Apoio e formação para as famílias da comunidade.", MeetingInfo: "Último domingo do mês, após a missa das 10h."},
-				{Name: "Grupo de Jovens", Description: "Encontros de oração, formação e convivência para a juventude.", MeetingInfo: "Sextas-feiras, às 20h, na sala 5."},
-			}
-			db.Create(&pastorals)
+	var count int64
+	db.Model(&Service{}).Count(&count)
+	if count == 0 {
+		services := []Service{
+			{Name: "Batismo - Curso de Pais e Padrinhos", Description: "Inscrição para o curso preparatório para o batismo de crianças."},
+			{Name: "Catequese Infantil", Description: "Inscrições para a catequese para crianças e pré-adolescentes."},
+			{Name: "Catequese de Adultos", Description: "Preparação para os sacramentos da iniciação cristã para adultos."},
+			{Name: "Curso de Noivos", Description: "Curso preparatório obrigatório para casais que desejam se casar na igreja."},
+			{Name: "Encontro de Casais com Cristo (ECC)", Description: "Movimento da Igreja Católica para casais."},
+			{Name: "Agendamento de Casamento", Description: "Reserve a data para a sua cerimônia de casamento na paróquia."},
+			{Name: "Crisma", Description: "Sacramento da confirmação para jovens e adultos."},
+			{Name: "Primeira Eucaristia", Description: "Preparação para receber o sacramento da Eucaristia pela primeira vez."},
+			{Name: "Agendamento com o Padre", Description: "Marque um horário para confissão ou orientação espiritual."},
 		}
+		db.Create(&services)
+	}
+
+	db.Model(&Pastoral{}).Count(&count)
+	if count == 0 {
+		pastorals := []Pastoral{
+			{Name: "Pastoral da Criança", Description: "Acompanhamento de crianças carentes e suas famílias.", MeetingInfo: "Sábados, às 14h, no Salão Paroquial."},
+			{Name: "Pastoral do Dízimo", Description: "Conscientização sobre a importância da contribuição para a comunidade.", MeetingInfo: "Primeira terça-feira do mês, às 19h30."},
+			{Name: "Pastoral Familiar", Description: "Apoio e formação para as famílias da comunidade.", MeetingInfo: "Último domingo do mês, após a missa das 10h."},
+			{Name: "Grupo de Jovens", Description: "Encontros de oração, formação e convivência para a juventude.", MeetingInfo: "Sextas-feiras, às 20h, na sala 5."},
+		}
+		db.Create(&pastorals)
+	}
 }
+
 

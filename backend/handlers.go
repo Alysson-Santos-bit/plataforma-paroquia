@@ -31,6 +31,7 @@ func RegisterUser(c *gin.Context) {
 		return
 	}
 
+	// Cria o utilizador com os dados da entrada
 	user := User{
 		Name:     input.Name,
 		Email:    input.Email,
@@ -97,7 +98,7 @@ func LoginUser(c *gin.Context) {
 func GetParishInfo(c *gin.Context) {
 	info := gin.H{
 		"name":    "Paróquia Santo Antônio de Marília",
-		"history": "A Paróquia Santo Antônio de Marília, confiada aos cuidados dos Frades Franciscanos Capuchinhos, tem uma rica história de fé e serviço à comunidade...",
+		"history": "A Paróquia Santo Antônio de Marília, confiada aos cuidados dos Padres Estigmatinos, tem uma rica história de fé e serviço à comunidade. Desde a sua fundação, tem sido um farol de esperança, oferecendo orientação espiritual, celebrando os sacramentos e promovendo a caridade. Com uma forte devoção a Santo Antônio, conhecido como o 'santo do povo', a paróquia é um ponto de encontro para os fiéis, um lugar de oração, e um centro de atividades pastorais que buscam viver o Evangelho no dia a dia.",
 	}
 	c.JSON(http.StatusOK, info)
 }
@@ -178,15 +179,15 @@ func GetMyRegistrations(c *gin.Context) {
 	c.JSON(http.StatusOK, registrations)
 }
 
-// CreateContribution lida com o registo de uma nova contribuição.
+// CreateContribution regista uma nova contribuição de dízimo.
 func CreateContribution(c *gin.Context) {
 	var input struct {
-		Value  float64 `json:"value" binding:"required,gt=0"`
+		Value  float64 `json:"value" binding:"required"`
 		Method string  `json:"method" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados da contribuição inválidos: " + err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados da contribuição inválidos."})
 		return
 	}
 
@@ -200,7 +201,7 @@ func CreateContribution(c *gin.Context) {
 		UserID: userID.(uint),
 		Value:  input.Value,
 		Method: input.Method,
-		Status: "Pendente", // O status pode ser atualizado por um webhook de pagamento no futuro
+		Status: "Pendente", // O status pode ser atualizado por um admin ou sistema de pagamento
 	}
 
 	if result := db.Create(&contribution); result.Error != nil {
@@ -208,7 +209,25 @@ func CreateContribution(c *gin.Context) {
 		return
 	}
 
-	log.Printf("Utilizador ID %d registou uma contribuição de R$%.2f via %s", userID, input.Value, input.Method)
-	c.JSON(http.StatusOK, gin.H{"message": "Registo de contribuição recebido com sucesso!"})
+	log.Printf("Utilizador ID %d iniciou uma contribuição de R$%.2f via %s", userID, input.Value, input.Method)
+	c.JSON(http.StatusOK, gin.H{"message": "Intenção de contribuição registada com sucesso!"})
+}
+
+// GetMyContributions devolve o histórico de contribuições do utilizador.
+func GetMyContributions(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Utilizador não autenticado."})
+		return
+	}
+
+	var contributions []Contribution
+	// Ordena por data de criação, da mais recente para a mais antiga
+	if err := db.Where("user_id = ?", userID).Order("created_at desc").Find(&contributions).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar histórico de contribuições."})
+		return
+	}
+
+	c.JSON(http.StatusOK, contributions)
 }
 

@@ -46,6 +46,7 @@ export default function App() {
 
   // Estados das inscrições e contribuições
   const [myRegistrations, setMyRegistrations] = useState([]);
+  const [myContributions, setMyContributions] = useState([]); // Novo estado
   const [contributionAmount, setContributionAmount] = useState('');
   const [showPixModal, setShowPixModal] = useState(false);
 
@@ -92,31 +93,35 @@ export default function App() {
     }
   }, []);
 
-  // Efeito para buscar as inscrições do utilizador quando ele faz login
+  // Efeito para buscar os dados do utilizador (inscrições e contribuições) quando ele faz login
   useEffect(() => {
-    const fetchMyRegistrations = async () => {
+    const fetchUserData = async () => {
       if (currentUser) {
         const token = localStorage.getItem('token');
         try {
-          const res = await fetch(`${API_BASE_URL}/api/my-registrations`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
+          // Busca ambas as informações em paralelo
+          const [regsRes, contribsRes] = await Promise.all([
+            fetch(`${API_BASE_URL}/api/my-registrations`, { headers: { 'Authorization': `Bearer ${token}` } }),
+            fetch(`${API_BASE_URL}/api/my-contributions`, { headers: { 'Authorization': `Bearer ${token}` } })
+          ]);
 
-          if (!res.ok) {
-            const errorData = await res.json();
-            throw new Error(errorData.error || 'Não foi possível buscar as suas inscrições.');
+          if (!regsRes.ok || !contribsRes.ok) {
+            throw new Error('Não foi possível buscar os dados do paroquiano.');
           }
-          const data = await res.json();
-          console.log("Dados de inscrições recebidos (geral):", data);
-          setMyRegistrations(data || []);
+          
+          const regsData = await regsRes.json();
+          const contribsData = await contribsRes.json();
+
+          setMyRegistrations(regsData || []);
+          setMyContributions(contribsData || []);
         } catch (err) {
-           console.error("Erro detalhado ao buscar inscrições:", err);
+           console.error("Erro detalhado ao buscar dados do utilizador:", err);
            showNotification(`Erro: ${err.message}`, 'error');
         }
       }
     };
 
-    fetchMyRegistrations();
+    fetchUserData();
   }, [currentUser]);
 
   // Função para mostrar notificações
@@ -188,6 +193,7 @@ export default function App() {
     localStorage.removeItem('user');
     setCurrentUser(null);
     setMyRegistrations([]);
+    setMyContributions([]); // Limpa as contribuições ao fazer logout
     showNotification('Sessão encerrada com sucesso!');
   };
 
@@ -238,8 +244,14 @@ export default function App() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Não foi possível registar a contribuição.');
         
-        setShowPixModal(true); // Mostra o modal do PIX
-        showNotification("Leia o QR Code ou copie a chave para contribuir.");
+        setShowPixModal(true);
+        
+        // Atualiza o histórico de contribuições
+        const updatedContribsRes = await fetch(`${API_BASE_URL}/api/my-contributions`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const updatedContribsData = await updatedContribsRes.json();
+        setMyContributions(updatedContribsData || []);
 
     } catch (err) {
         showNotification(err.message, 'error');
@@ -247,12 +259,18 @@ export default function App() {
   };
   
   const copyPixKey = () => {
-    const pixKey = "000.000.000-00"; // Chave PIX de exemplo
+    const pixKey = "chave.pix.da.paroquia@email.com"; // Chave PIX de exemplo
     navigator.clipboard.writeText(pixKey).then(() => {
         showNotification('Chave PIX copiada!');
     }, (err) => {
         showNotification('Falha ao copiar a chave.', 'error');
     });
+  }
+  
+  // Função para formatar a data
+  const formatDate = (dateString) => {
+    const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
+    return new Date(dateString).toLocaleDateString('pt-BR', options);
   }
 
 
@@ -306,16 +324,12 @@ export default function App() {
                         <h3 className="text-2xl font-semibold text-gray-700 mb-4">Minhas Inscrições</h3>
                         {myRegistrations.length > 0 ? (
                             <ul className="space-y-4">
-                            {myRegistrations.map(reg => {
-                                // --- NOSSO DIAGNÓSTICO FINAL ---
-                                console.log("A renderizar inscrição individual:", reg);
-                                return (
-                                    <li key={reg.ID} className="p-4 bg-gray-100 rounded-lg">
-                                        <h4 className="font-semibold text-lg text-gray-800">{reg.service?.name || 'Serviço não encontrado'}</h4>
-                                        <p className="text-sm text-gray-600">Status: <span className="font-medium text-yellow-600">{reg.status}</span></p>
-                                    </li>
-                                )
-                            })}
+                            {myRegistrations.map(reg => (
+                                <li key={reg.ID} className="p-4 bg-gray-100 rounded-lg">
+                                    <h4 className="font-semibold text-lg text-gray-800">{reg.service?.name || 'Serviço não encontrado'}</h4>
+                                    <p className="text-sm text-gray-600">Status: <span className="font-medium text-yellow-600">{reg.status}</span></p>
+                                </li>
+                            ))}
                             </ul>
                         ) : (
                             <p className="text-gray-600">Você ainda não se inscreveu em nenhum serviço.</p>
@@ -340,6 +354,40 @@ export default function App() {
                             <button onClick={handlePixContribution} className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full transition duration-300">
                                 Contribuir com PIX
                             </button>
+                        </div>
+                         {/* Histórico de Contribuições */}
+                         <div className="mt-6">
+                            <h4 className="text-xl font-semibold text-gray-700 mb-3">Seu Histórico</h4>
+                            {myContributions.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full bg-white rounded-lg">
+                                        <thead className="bg-gray-200">
+                                            <tr>
+                                                <th className="py-2 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                                                <th className="py-2 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
+                                                <th className="py-2 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Método</th>
+                                                <th className="py-2 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {myContributions.map(contrib => (
+                                                <tr key={contrib.ID}>
+                                                    <td className="py-2 px-4 whitespace-nowrap text-sm text-gray-900">{formatDate(contrib.CreatedAt)}</td>
+                                                    <td className="py-2 px-4 whitespace-nowrap text-sm text-gray-900">R$ {contrib.value.toFixed(2)}</td>
+                                                    <td className="py-2 px-4 whitespace-nowrap text-sm text-gray-900">{contrib.method}</td>
+                                                    <td className="py-2 px-4 whitespace-nowrap text-sm">
+                                                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                                            {contrib.status}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <p className="text-gray-600 text-sm mt-2">Nenhuma contribuição registada ainda.</p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -451,8 +499,8 @@ export default function App() {
               <PixQrCodeIcon className="w-48 h-48" />
             </div>
             <div className="bg-gray-100 p-3 rounded-lg">
-                <p className="text-gray-600 text-sm">Chave PIX (CPF - Exemplo):</p>
-                <p className="font-mono text-lg font-bold">000.000.000-00</p>
+                <p className="text-gray-600 text-sm">Chave PIX (Exemplo):</p>
+                <p className="font-mono text-lg font-bold">chave.pix.da.paroquia@email.com</p>
             </div>
             <button onClick={copyPixKey} className="w-full mt-4 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-full transition duration-300">
                 Copiar Chave
