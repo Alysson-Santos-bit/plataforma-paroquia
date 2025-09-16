@@ -11,36 +11,32 @@ const ClockIcon = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg
 const CalendarIcon = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> );
 const FacebookIcon = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg> );
 const InstagramIcon = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg> );
-const AdminIcon = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg> );
+const AdminIcon = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg> );
+const MailIcon = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>);
+const PhoneIcon = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>);
+const MapPinIcon = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>);
 
 
 // --- Componente Principal da Aplicação ---
 export default function App() {
-  // Estados da aplicação
+  // ... (todos os seus estados continuam iguais)
   const [parishInfo, setParishInfo] = useState({});
   const [services, setServices] = useState([]);
   const [pastorals, setPastorals] = useState([]);
   const [massTimes, setMassTimes] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  
-  // Estados de autenticação e UI
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
-
-  // Estados dos dados do utilizador
   const [myRegistrations, setMyRegistrations] = useState([]);
   const [myContributions, setMyContributions] = useState([]);
   const [contributionAmount, setContributionAmount] = useState('');
   const [showPixModal, setShowPixModal] = useState(false);
-  
-  // Novo estado para dados de administração
   const [allRegistrations, setAllRegistrations] = useState([]);
 
-
-  // Efeito para buscar os dados públicos da paróquia
+  // ... (todos os seus useEffects e funções handle continuam iguais)
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
@@ -75,7 +71,6 @@ export default function App() {
     fetchData();
   }, []);
 
-  // Efeito para verificar se já existe um token no arranque da aplicação
   useEffect(() => {
     const token = localStorage.getItem('token');
     const user = localStorage.getItem('user');
@@ -84,14 +79,12 @@ export default function App() {
     }
   }, []);
 
-  // Efeito para buscar os dados do utilizador logado (incluindo dados de admin)
   useEffect(() => {
     const fetchUserData = async () => {
       if (!currentUser) return;
       
       const token = localStorage.getItem('token');
       try {
-        // Busca dados pessoais
         const [regsRes, contribsRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/my-registrations`, { headers: { 'Authorization': `Bearer ${token}` } }),
           fetch(`${API_BASE_URL}/api/my-contributions`, { headers: { 'Authorization': `Bearer ${token}` } })
@@ -100,7 +93,6 @@ export default function App() {
         setMyRegistrations(await regsRes.json() || []);
         setMyContributions(await contribsRes.json() || []);
 
-        // Se for admin, busca todos os dados de inscrições
         if (currentUser.isAdmin) {
           const allRegsRes = await fetch(`${API_BASE_URL}/api/admin/registrations`, { headers: { 'Authorization': `Bearer ${token}` } });
           if (!allRegsRes.ok) throw new Error("Falha ao buscar dados de administração.");
@@ -111,11 +103,9 @@ export default function App() {
          showNotification(`Erro: ${err.message}`, 'error');
       }
     };
-
     fetchUserData();
   }, [currentUser]);
-
-  // ... (funções showNotification, handleAuthClick, handleCloseModal, handleRegisterSubmit, etc. continuam iguais)
+  
   const showNotification = (message, type = 'success') => { setNotification({ show: true, message, type }); setTimeout(() => { setNotification({ show: false, message: '', type: 'success' }); }, 5000); };
   const handleAuthClick = () => setShowAuthModal(true);
   const handleCloseModal = () => { setShowAuthModal(false); setShowPixModal(false); }
@@ -126,7 +116,6 @@ export default function App() {
   const handlePixContribution = async () => { const value = parseFloat(contributionAmount); if (!value || value <= 0) { showNotification('Por favor, insira um valor válido.', 'error'); return; } const token = localStorage.getItem('token'); try { const res = await fetch(`${API_BASE_URL}/api/contributions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, body: JSON.stringify({ value: value, method: 'PIX' }) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Não foi possível registar a contribuição.'); setShowPixModal(true); showNotification("Leia o QR Code ou copie a chave para contribuir."); const updatedContribsRes = await fetch(`${API_BASE_URL}/api/my-contributions`, { headers: { 'Authorization': `Bearer ${token}` }}); setMyContributions(await updatedContribsRes.json() || []); } catch (err) { showNotification(err.message, 'error'); } };
   const copyPixKey = () => { const pixKey = "chave.pix.da.paroquia@email.com"; navigator.clipboard.writeText(pixKey).then(() => showNotification('Chave PIX copiada!'), () => showNotification('Falha ao copiar a chave.', 'error')); }
 
-
   const timesByLocation = massTimes.reduce((acc, time) => {
       (acc[time.location] = acc[time.location] || []).push(time);
       return acc;
@@ -136,14 +125,14 @@ export default function App() {
   if (error) return <div className="flex justify-center items-center h-screen bg-red-100"><p className="text-xl text-red-700">{error}</p></div>;
 
   return (
-    <div className="bg-gray-50 min-h-screen font-sans">
+    <div className="bg-gray-50 min-h-screen font-sans flex flex-col">
       {notification.show && (<div className={`fixed top-5 right-5 p-4 rounded-lg shadow-lg text-white ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'} animate-fade-in-out z-50`}>{notification.message}</div>)}
       <header className="bg-white shadow-md sticky top-0 z-20"><div className="container mx-auto px-6 py-4 flex justify-between items-center"><div className="flex items-center space-x-2"><HomeIcon className="text-yellow-500" /><h1 className="text-2xl font-bold text-gray-800">{parishInfo.name}</h1></div><div>{currentUser ? (<div className="flex items-center space-x-4"><span className="text-gray-700">Bem-vindo(a), {currentUser.name}!</span><button onClick={handleLogout} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full transition duration-300">Logout</button></div>) : (<button onClick={handleAuthClick} className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-full flex items-center space-x-2 transition duration-300"><UserCircleIcon /><span>Login / Cadastro</span></button>)}</div></div></header>
       
-      <main className="container mx-auto px-6 py-8">
+      {/* AQUI ESTÁ A CORREÇÃO: Adicionado 'flex-grow' ao <main> */}
+      <main className="container mx-auto px-6 py-8 flex-grow">
         {currentUser && (<section id="parishioner-area" className="mb-12 bg-white p-6 rounded-xl shadow-lg"><h2 className="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-yellow-500 pb-2">Área do Paroquiano</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"><div><h3 className="text-2xl font-semibold text-gray-700 mb-4">Minhas Inscrições</h3>{myRegistrations.length > 0 ? (<ul className="space-y-4">{myRegistrations.map(reg => (<li key={reg.ID} className="p-4 bg-gray-100 rounded-lg"><h4 className="font-semibold text-lg text-gray-800">{reg.service?.name || 'Serviço não encontrado'}</h4><p className="text-sm text-gray-600">Status: <span className="font-medium text-yellow-600">{reg.status}</span></p></li>))}</ul>) : (<p className="text-gray-600">Você ainda não se inscreveu em nenhum serviço.</p>)}</div><div><h3 className="text-2xl font-semibold text-gray-700 mb-4">Contribuição</h3><div className="p-4 bg-gray-100 rounded-lg"><p className="text-gray-700 mb-4">A sua contribuição generosa ajuda a manter as obras da nossa paróquia.</p><div className="flex items-center space-x-2 mb-4"><span className="text-gray-800 font-bold text-lg">R$</span><input type="number" value={contributionAmount} onChange={(e) => setContributionAmount(e.target.value)} placeholder="0,00" className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"/></div><button onClick={handlePixContribution} className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full transition duration-300">Contribuir com PIX</button></div></div><div className="md:col-span-2 lg:col-span-1"><h3 className="text-2xl font-semibold text-gray-700 mb-4">Histórico de Contribuições</h3>{myContributions.length > 0 ? (<div className="overflow-x-auto"><table className="w-full text-sm text-left text-gray-500"><thead className="text-xs text-gray-700 uppercase bg-gray-100"><tr><th scope="col" className="px-4 py-3">Data</th><th scope="col" className="px-4 py-3">Valor</th><th scope="col" className="px-4 py-3">Método</th><th scope="col" className="px-4 py-3">Status</th></tr></thead><tbody>{myContributions.map(c => (<tr key={c.ID} className="bg-white border-b"><td className="px-4 py-3">{new Date(c.CreatedAt).toLocaleDateString('pt-BR')}</td><td className="px-4 py-3">R$ {c.value?.toFixed(2) || '0.00'}</td><td className="px-4 py-3">{c.method}</td><td className="px-4 py-3"><span className="font-medium text-orange-500">{c.status}</span></td></tr>))}</tbody></table></div>) : (<p className="text-gray-600">Nenhuma contribuição registada.</p>)}</div></div></section>)}
         
-        {/* Nova Área Administrativa */}
         {currentUser && currentUser.isAdmin && (
             <section id="admin-area" className="mb-12 bg-red-50 border border-red-200 p-6 rounded-xl shadow-lg">
                 <h2 className="text-3xl font-bold text-red-800 mb-6 border-b-2 border-red-500 pb-2 flex items-center"><AdminIcon className="mr-3"/>Área Administrativa</h2>
@@ -186,21 +175,57 @@ export default function App() {
         <section id="services" className="mb-12"><h2 className="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-yellow-500 pb-2">Serviços e Sacramentos</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">{services.map(service => (<div key={service.ID} className="bg-white rounded-xl shadow-lg overflow-hidden transform hover:-translate-y-2 transition duration-300"><div className="p-6"><h3 className="text-xl font-bold text-gray-800 mb-2">{service.name}</h3><p className="text-gray-600 mb-4">{service.description}</p><button onClick={() => handleRegistration(service.ID)} className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full transition duration-300">Inscrever-se</button></div></div>))}</div></section>
         <section id="pastorals" className="mb-12"><h2 className="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-yellow-500 pb-2">Pastorais e Movimentos</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">{pastorals.map(pastoral => (<div key={pastoral.ID} className="bg-white p-6 rounded-xl shadow-lg"><h3 className="text-xl font-bold text-gray-800 mb-2">{pastoral.name}</h3><p className="text-gray-600 mb-4">{pastoral.description}</p><div className="text-sm text-gray-500"><p><span className="font-semibold">Reuniões:</span> {pastoral.meeting_info}</p></div></div>))}</div></section>
         
-      <section id="social-media">
-        <h2 className="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-yellow-500 pb-2">Acompanhe-nos nas Redes Sociais</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <a href="https://www.facebook.com/groups/1234749000206433" target="_blank" rel="noopener noreferrer" className="bg-blue-600 text-white p-8 rounded-xl shadow-lg flex items-center justify-center space-x-4 transform hover:scale-105 transition duration-300">
-            <FacebookIcon className="w-10 h-10"/>
-            <span className="text-2xl font-bold">Facebook</span>
-          </a>
-          <a href="https://www.instagram.com/paroquiasantoantoniomarilia" target="_blank" rel="noopener noreferrer" className="bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 text-white p-8 rounded-xl shadow-lg flex items-center justify-center space-x-4 transform hover:scale-105 transition duration-300">
-            <InstagramIcon className="w-10 h-10"/>
-            <span className="text-2xl font-bold">Instagram</span>
-          </a>
-        </div>
-      </section>
+        <section id="social-media">
+          <h2 className="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-yellow-500 pb-2">Acompanhe-nos nas Redes Sociais</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <a href="https://www.facebook.com/groups/1234749000206433" target="_blank" rel="noopener noreferrer" className="bg-blue-600 text-white p-8 rounded-xl shadow-lg flex items-center justify-center space-x-4 transform hover:scale-105 transition duration-300">
+              <FacebookIcon className="w-10 h-10"/>
+              <span className="text-2xl font-bold">Facebook</span>
+            </a>
+            <a href="https://www.instagram.com/paroquiasantoantoniomarilia" target="_blank" rel="noopener noreferrer" className="bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 text-white p-8 rounded-xl shadow-lg flex items-center justify-center space-x-4 transform hover:scale-105 transition duration-300">
+              <InstagramIcon className="w-10 h-10"/>
+              <span className="text-2xl font-bold">Instagram</span>
+            </a>
+          </div>
+        </section>
       
       </main>
+
+      <footer className="bg-gray-800 text-white mt-auto">
+        <div className="container mx-auto px-6 py-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
+                <div>
+                    <h3 className="text-lg font-bold mb-4">Paróquia Santo Antônio de Marília</h3>
+                    <div className="flex items-center justify-center md:justify-start mb-2">
+                        <MapPinIcon className="w-5 h-5 mr-2"/>
+                        <p>Av. Santo Antônio, 721 - Marília/SP</p>
+                    </div>
+                </div>
+                <div>
+                    <h3 className="text-lg font-bold mb-4">Contacto</h3>
+                    <div className="flex items-center justify-center md:justify-start mb-2">
+                        <PhoneIcon className="w-5 h-5 mr-2"/>
+                        <p>(14) 3433-2522</p>
+                    </div>
+                    <div className="flex items-center justify-center md:justify-start">
+                        <MailIcon className="w-5 h-5 mr-2"/>
+                        <p>par.santoantonio@diocesedemarilia.com.br</p>
+                    </div>
+                </div>
+                <div>
+                    <h3 className="text-lg font-bold mb-4">Redes Sociais</h3>
+                    <div className="flex justify-center md:justify-start space-x-4">
+                        <a href="https://www.facebook.com/groups/1234749000206433" target="_blank" rel="noopener noreferrer" className="hover:text-yellow-400 transition duration-300"><FacebookIcon className="w-7 h-7"/></a>
+                        <a href="https://www.instagram.com/paroquiasantoantoniomarilia" target="_blank" rel="noopener noreferrer" className="hover:text-yellow-400 transition duration-300"><InstagramIcon className="w-7 h-7"/></a>
+                    </div>
+                </div>
+            </div>
+            <div className="text-center text-gray-400 mt-8 pt-4 border-t border-gray-700">
+                <p>&copy; {new Date().getFullYear()} Paróquia Santo Antônio de Marília. Todos os direitos reservados.</p>
+            </div>
+        </div>
+      </footer>
+
       {showAuthModal && (<div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-40" onClick={handleCloseModal}><div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md relative" onClick={e => e.stopPropagation()}><button onClick={handleCloseModal} className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-2xl">&times;</button>{isRegistering ? (<div><h2 className="text-2xl font-bold mb-6 text-center">Criar Conta</h2><form onSubmit={handleRegisterSubmit}><div className="mb-4"><label className="block text-gray-700 mb-2" htmlFor="name">Nome Completo</label><input className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" type="text" id="name" name="name" required /></div><div className="mb-4"><label className="block text-gray-700 mb-2" htmlFor="email">E-mail</label><input className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" type="email" id="email" name="email" required /></div><div className="mb-6"><label className="block text-gray-700 mb-2" htmlFor="password">Senha (mín. 6 caracteres)</label><input className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" type="password" id="password" name="password" required /></div><button className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-full" type="submit">Registar</button></form><p className="text-center mt-4">Já tem uma conta? <button onClick={() => setIsRegistering(false)} className="text-blue-500 hover:underline">Faça o login</button></p></div>) : (<div><h2 className="text-2xl font-bold mb-6 text-center">Login</h2><form onSubmit={handleLoginSubmit}><div className="mb-4"><label className="block text-gray-700 mb-2" htmlFor="email">E-mail</label><input className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" type="email" id="email" name="email" required /></div><div className="mb-6"><label className="block text-gray-700 mb-2" htmlFor="password">Senha</label><input className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" type="password" id="password" name="password" required /></div><button className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full" type="submit">Entrar</button></form><p className="text-center mt-4">Não tem uma conta? <button onClick={() => setIsRegistering(true)} className="text-blue-500 hover:underline">Cadastre-se</button></p></div>)}</div></div>)}
       {showPixModal && (<div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-40" onClick={handleCloseModal}><div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm relative text-center" onClick={e => e.stopPropagation()}><button onClick={handleCloseModal} className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-2xl">&times;</button><h2 className="text-2xl font-bold mb-4">Contribuição via PIX</h2><p className="text-gray-600 mb-4">Leia o QR Code com a app do seu banco ou copie a chave abaixo.</p><div className="flex justify-center mb-4"><PixQrCodeIcon className="w-48 h-48" /></div><div className="bg-gray-100 p-3 rounded-lg"><p className="text-gray-600 text-sm">Chave PIX (E-mail - Exemplo):</p><p className="font-mono text-lg font-bold">chave.pix.da.paroquia@email.com</p></div><button onClick={copyPixKey} className="w-full mt-4 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-full transition duration-300">Copiar Chave</button></div></div>)}
     </div>
