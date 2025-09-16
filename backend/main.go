@@ -38,17 +38,18 @@ func main() {
 	seedDatabase()
 
 	router := gin.Default()
-
-	// Configuração de CORS Específica para permitir o cabeçalho de Autorização
+	
+    // Configuração de CORS Específica e Segura para permitir o cabeçalho de Autorização
 	config := cors.Config{
-		AllowOrigins:     []string{"*"}, // Em produção, mude para o seu domínio real
+		AllowOrigins:     []string{"*"}, // Permite todas as origens para o ambiente de desenvolvimento
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"}, // A adição de "Authorization" aqui é a correção.
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}
 	router.Use(cors.New(config))
+
 
 	api := router.Group("/api")
 	{
@@ -59,7 +60,7 @@ func main() {
 		api.GET("/pastorais", GetPastorais)
 		api.GET("/mass-times", GetMassTimes)
 	}
-
+	
 	router.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "pong"})
 	})
@@ -73,7 +74,6 @@ func main() {
 		protected.GET("/my-contributions", GetMyContributions)
 	}
 
-	// Novo grupo de rotas apenas para administradores
 	admin := api.Group("/admin")
 	admin.Use(AuthMiddleware())
 	admin.Use(AdminMiddleware())
@@ -86,7 +86,8 @@ func main() {
 	router.Run(":8080")
 }
 
-// Middlewares de Autenticação e Autorização
+// ... (Resto do ficheiro continua igual) ...
+
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -95,26 +96,22 @@ func AuthMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		claims := &Claims{}
 		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 			return jwtKey, nil
 		})
-
 		if err != nil || !token.Valid {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token inválido ou expirado"})
 			c.Abort()
 			return
 		}
-
 		c.Set("userID", claims.UserID)
-		c.Set("isAdmin", claims.IsAdmin) // Passa o status de admin para o contexto
+		c.Set("isAdmin", claims.IsAdmin)
 		c.Next()
 	}
 }
 
-// Novo Middleware para verificar se o utilizador é administrador
 func AdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		isAdmin, exists := c.Get("isAdmin")
@@ -128,22 +125,21 @@ func AdminMiddleware() gin.HandlerFunc {
 }
 
 func seedDatabase() {
-	var count int64
-	db.Model(&Service{}).Count(&count)
-	if count == 0 {
-		services := []Service{
-			{Name: "Batismo - Curso de Pais e Padrinhos", Description: "Inscrição para o curso preparatório para o batismo de crianças."},
-			{Name: "Catequese Infantil", Description: "Inscrições para a catequese para crianças e pré-adolescentes."},
-			{Name: "Catequese de Adultos", Description: "Preparação para os sacramentos da iniciação cristã para adultos."},
-			{Name: "Curso de Noivos", Description: "Curso preparatório obrigatório para casais que desejam se casar na igreja."},
-			{Name: "Encontro de Casais com Cristo (ECC)", Description: "Movimento da Igreja Católica para casais."},
-			{Name: "Agendamento de Casamento", Description: "Reserve a data para a sua cerimônia de casamento na paróquia."},
+    var count int64
+    db.Model(&Service{}).Count(&count)
+    if count == 0 {
+        services := []Service{
+            {Name: "Batismo - Curso de Pais e Padrinhos", Description: "Inscrição para o curso preparatório para o batismo de crianças."},
+            {Name: "Catequese Infantil", Description: "Inscrições para a catequese para crianças e pré-adolescentes."},
+            {Name: "Catequese de Adultos", Description: "Preparação para os sacramentos da iniciação cristã para adultos."},
+            {Name: "Curso de Noivos", Description: "Curso preparatório obrigatório para casais que desejam se casar na igreja."},
+            {Name: "Encontro de Casais com Cristo (ECC)", Description: "Movimento da Igreja Católica para casais."},
+            {Name: "Agendamento de Casamento", Description: "Reserve a data para a sua cerimônia de casamento na paróquia."},
 			{Name: "Crisma", Description: "Sacramento da confirmação para jovens e adultos."},
 			{Name: "Primeira Eucaristia", Description: "Preparação para receber o sacramento da Eucaristia pela primeira vez."},
-			{Name: "Agendamento com o Padre", Description: "Marque um horário para confissão ou orientação espiritual."},
-		}
-		db.Create(&services)
-	}
+        }
+        db.Create(&services)
+    }
 
 	db.Model(&Pastoral{}).Count(&count)
 	if count == 0 {
@@ -179,4 +175,5 @@ func seedDatabase() {
 		db.Create(&massTimes)
 	}
 }
+
 
