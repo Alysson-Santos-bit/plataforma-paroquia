@@ -15,6 +15,9 @@ type RegisterInput struct {
 	Name     string `json:"name" binding:"required"`
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required,min=6"`
+	Address  string `json:"address"`
+	DOB      string `json:"dob"` // Data de Nascimento (Date of Birth)
+	Gender   string `json:"gender"`
 }
 
 // RegisterUser lida com o registo de um novo utilizador.
@@ -35,7 +38,10 @@ func RegisterUser(c *gin.Context) {
 		Name:     input.Name,
 		Email:    input.Email,
 		Password: string(hashedPassword),
-		IsAdmin:  input.Email == AdminEmail, // Define como admin se o e-mail corresponder
+		Address:  input.Address,
+		DOB:      input.DOB,
+		Gender:   input.Gender,
+		IsAdmin:  input.Email == AdminEmail,
 	}
 
 	result := db.Create(&user)
@@ -70,7 +76,7 @@ func LoginUser(c *gin.Context) {
 	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := &Claims{
 		UserID:  user.ID,
-		IsAdmin: user.IsAdmin, // Adiciona o status de admin ao token
+		IsAdmin: user.IsAdmin,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 		},
@@ -90,17 +96,15 @@ func LoginUser(c *gin.Context) {
 			"id":      user.ID,
 			"name":    user.Name,
 			"email":   user.Email,
-			"isAdmin": user.IsAdmin, // Envia o status de admin para o frontend
+			"isAdmin": user.IsAdmin,
 		},
 	})
 }
 
-// ... (GetParishInfo, GetServices, GetPastorais, etc. continuam iguais) ...
-
 func GetParishInfo(c *gin.Context) {
 	info := gin.H{
 		"name":            "Paróquia Santo Antônio de Marília",
-		"history":         "A Paróquia Santo Antônio de Marília, confiada aos cuidados dos Padres Estigmatinos, tem uma rica história de fé e serviço à comunidade. Desde a sua fundação, tem sido um farol de esperança, oferecendo orientação espiritual, celebrando os sacramentos e promovendo a caridade. Com uma forte devoção a Santo Antônio, conhecido como o 'santo do povo', a paróquia é um ponto de encontro para os fiéis, um lugar de oração, e um centro de atividades pastorais que buscam viver o Evangelho no dia a dia.",
+		"history":         "A Paróquia Santo Antônio de Marília, confiada aos cuidados dos Padres Estigmatinos, tem uma rica história de fé e serviço à comunidade...",
 		"secretariat_hours": "Segunda a sexta das 8h às 17h30\nSábado das 8h às 12h",
 		"priest_hours":      "Segunda: 9h30 às 11h | 14h às 15h30\nQuarta, quinta e sexta: 9h às 11h30 | 14h às 15h30",
 	}
@@ -134,40 +138,31 @@ func GetMassTimes(c *gin.Context) {
 	c.JSON(http.StatusOK, massTimes)
 }
 
-// ... (CreateRegistration, GetMyRegistrations, etc. continuam iguais) ...
-
 func CreateRegistration(c *gin.Context) {
 	var input struct {
 		ServiceID uint `json:"service_id" binding:"required"`
 	}
-
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "ID do serviço é obrigatório."})
 		return
 	}
-
 	userID, _ := c.Get("userID")
-
 	var existingReg Registration
 	if err := db.Where("user_id = ? AND service_id = ?", userID, input.ServiceID).First(&existingReg).Error; err == nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "Você já está inscrito neste serviço."})
 		return
 	}
-
 	registration := Registration{
 		UserID:    userID.(uint),
 		ServiceID: input.ServiceID,
 		Status:    "Pendente",
 	}
-
 	if result := db.Create(&registration); result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Não foi possível processar a inscrição."})
 		return
 	}
-
 	var service Service
 	db.First(&service, input.ServiceID)
-
 	log.Printf("Utilizador ID %d inscreveu-se no serviço ID %d (%s)", userID, input.ServiceID, service.Name)
 	c.JSON(http.StatusOK, gin.H{"message": "Inscrição em '" + service.Name + "' realizada com sucesso!"})
 }
@@ -187,21 +182,17 @@ func CreateContribution(c *gin.Context) {
 		Value  float64 `json:"value" binding:"required"`
 		Method string  `json:"method" binding:"required"`
 	}
-
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados de contribuição inválidos."})
 		return
 	}
-
 	userID, _ := c.Get("userID")
-
 	contribution := Contribution{
 		UserID: userID.(uint),
 		Value:  input.Value,
 		Method: input.Method,
-		Status: "Confirmado", // Simplificado para o PIX
+		Status: "Confirmado",
 	}
-
 	if result := db.Create(&contribution); result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Não foi possível registar a contribuição."})
 		return
@@ -219,14 +210,40 @@ func GetMyContributions(c *gin.Context) {
 	c.JSON(http.StatusOK, contributions)
 }
 
-// Nova função para o administrador buscar todas as inscrições
+// --- Funções de Administração ---
+
 func GetAllRegistrations(c *gin.Context) {
 	var registrations []Registration
-	// Usa Preload para incluir os detalhes do Utilizador e do Serviço
 	if err := db.Preload("User").Preload("Service").Order("created_at desc").Find(&registrations).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar todas as inscrições."})
 		return
 	}
 	c.JSON(http.StatusOK, registrations)
+}
+
+// UpdateRegistrationStatus permite ao administrador alterar o status de uma inscrição.
+func UpdateRegistrationStatus(c *gin.Context) {
+	var input struct {
+		Status string `json:"status" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Novo status é obrigatório."})
+		return
+	}
+
+	regID := c.Param("id")
+	var registration Registration
+	if err := db.First(&registration, regID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Inscrição não encontrada."})
+		return
+	}
+
+	registration.Status = input.Status
+	if err := db.Save(&registration).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Falha ao atualizar o status."})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Status da inscrição atualizado com sucesso!"})
 }
 

@@ -38,10 +38,10 @@ func main() {
 	seedDatabase()
 
 	router := gin.Default()
-	
-    // Configuração de CORS Específica e Segura
+
+	// Configuração de CORS Específica para permitir o cabeçalho de Autorização
 	config := cors.Config{
-		AllowOrigins:     []string{"*"}, // Permite todas as origens para o ambiente de desenvolvimento
+		AllowOrigins:     []string{"*"}, // Em produção, mude para o seu domínio real
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -49,7 +49,6 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}
 	router.Use(cors.New(config))
-
 
 	api := router.Group("/api")
 	{
@@ -60,7 +59,7 @@ func main() {
 		api.GET("/pastorais", GetPastorais)
 		api.GET("/mass-times", GetMassTimes)
 	}
-	
+
 	router.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "pong"})
 	})
@@ -80,6 +79,7 @@ func main() {
 	admin.Use(AdminMiddleware())
 	{
 		admin.GET("/registrations", GetAllRegistrations)
+		admin.PATCH("/registrations/:id", UpdateRegistrationStatus)
 	}
 
 	log.Println("Servidor backend iniciado em http://localhost:8080")
@@ -127,24 +127,23 @@ func AdminMiddleware() gin.HandlerFunc {
 	}
 }
 
-
 func seedDatabase() {
-    var count int64
-    db.Model(&Service{}).Count(&count)
-    if count == 0 {
-        services := []Service{
-            {Name: "Batismo - Curso de Pais e Padrinhos", Description: "Inscrição para o curso preparatório para o batismo de crianças."},
-            {Name: "Catequese Infantil", Description: "Inscrições para a catequese para crianças e pré-adolescentes."},
-            {Name: "Catequese de Adultos", Description: "Preparação para os sacramentos da iniciação cristã para adultos."},
-            {Name: "Curso de Noivos", Description: "Curso preparatório obrigatório para casais que desejam se casar na igreja."},
-            {Name: "Encontro de Casais com Cristo (ECC)", Description: "Movimento da Igreja Católica para casais."},
-            {Name: "Agendamento de Casamento", Description: "Reserve a data para a sua cerimônia de casamento na paróquia."},
+	var count int64
+	db.Model(&Service{}).Count(&count)
+	if count == 0 {
+		services := []Service{
+			{Name: "Batismo - Curso de Pais e Padrinhos", Description: "Inscrição para o curso preparatório para o batismo de crianças."},
+			{Name: "Catequese Infantil", Description: "Inscrições para a catequese para crianças e pré-adolescentes."},
+			{Name: "Catequese de Adultos", Description: "Preparação para os sacramentos da iniciação cristã para adultos."},
+			{Name: "Curso de Noivos", Description: "Curso preparatório obrigatório para casais que desejam se casar na igreja."},
+			{Name: "Encontro de Casais com Cristo (ECC)", Description: "Movimento da Igreja Católica para casais."},
+			{Name: "Agendamento de Casamento", Description: "Reserve a data para a sua cerimônia de casamento na paróquia."},
 			{Name: "Crisma", Description: "Sacramento da confirmação para jovens e adultos."},
 			{Name: "Primeira Eucaristia", Description: "Preparação para receber o sacramento da Eucaristia pela primeira vez."},
 			{Name: "Agendamento com o Padre", Description: "Marque um horário para confissão ou orientação espiritual."},
-        }
-        db.Create(&services)
-    }
+		}
+		db.Create(&services)
+	}
 
 	db.Model(&Pastoral{}).Count(&count)
 	if count == 0 {
@@ -180,5 +179,4 @@ func seedDatabase() {
 		db.Create(&massTimes)
 	}
 }
-
 

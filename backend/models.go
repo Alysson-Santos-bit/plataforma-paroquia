@@ -11,8 +11,11 @@ type User struct {
 	gorm.Model
 	Name     string `json:"name"`
 	Email    string `json:"email" gorm:"unique"`
-	Password string `json:"-" gorm:"size:255"` 
-	IsAdmin  bool   `json:"isAdmin" gorm:"default:false"` // Novo campo para o administrador
+	Password string `json:"-" gorm:"size:255"`
+	Address  string `json:"address"`
+	DOB      string `json:"dob"` // Data de Nascimento
+	Gender   string `json:"gender"`
+	IsAdmin  bool   `json:"isAdmin" gorm:"default:false"`
 }
 
 // Service representa um serviço ou sacramento oferecido pela paróquia.
@@ -45,10 +48,9 @@ type Contribution struct {
 	gorm.Model
 	UserID uint    `json:"user_id"`
 	Value  float64 `json:"value"`
-	Method string  `json:"method"` // Ex: "PIX", "Cartão"
-	Status string  `json:"status"` // Ex: "Pendente", "Confirmado"
+	Method string  `json:"method"`
+	Status string  `json:"status"`
 }
-
 
 // LoginInput define a estrutura para os dados de entrada do login.
 type LoginInput struct {
