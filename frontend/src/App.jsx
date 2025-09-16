@@ -11,6 +11,7 @@ const ClockIcon = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg
 const CalendarIcon = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> );
 const FacebookIcon = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg> );
 const InstagramIcon = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg> );
+const AdminIcon = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg> );
 
 
 // --- Componente Principal da Aplicação ---
@@ -29,16 +30,20 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
 
-  // Estados das inscrições e contribuições
+  // Estados dos dados do utilizador
   const [myRegistrations, setMyRegistrations] = useState([]);
   const [myContributions, setMyContributions] = useState([]);
   const [contributionAmount, setContributionAmount] = useState('');
   const [showPixModal, setShowPixModal] = useState(false);
+  
+  // Novo estado para dados de administração
+  const [allRegistrations, setAllRegistrations] = useState([]);
 
 
   // Efeito para buscar os dados públicos da paróquia
   useEffect(() => {
     const fetchData = async () => {
+      setIsLoading(true);
       try {
         const [infoRes, servicesRes, pastoralsRes, massTimesRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/parish-info`),
@@ -48,8 +53,7 @@ export default function App() {
         ]);
 
         if (!infoRes.ok || !servicesRes.ok || !pastoralsRes.ok || !massTimesRes.ok) {
-           const errorData = await infoRes.json();
-           throw new Error(errorData.error || 'Falha em buscar dados do servidor.');
+           throw new Error('Falha em buscar dados do servidor.');
         }
 
         const infoData = await infoRes.json();
@@ -63,8 +67,7 @@ export default function App() {
         setMassTimes(massTimesData || []);
         
       } catch (err) {
-        console.error("Erro detalhado ao buscar dados:", err);
-        setError(`Não foi possível carregar os dados da paróquia. Detalhe: ${err.message}`);
+        setError('Não foi possível carregar os dados da paróquia. Tente novamente mais tarde.');
       } finally {
         setIsLoading(false);
       }
@@ -81,149 +84,48 @@ export default function App() {
     }
   }, []);
 
-  // Efeito para buscar os dados do utilizador logado
+  // Efeito para buscar os dados do utilizador logado (incluindo dados de admin)
   useEffect(() => {
     const fetchUserData = async () => {
-      if (currentUser) {
-        const token = localStorage.getItem('token');
-        try {
-          const [regsRes, contribsRes] = await Promise.all([
-            fetch(`${API_BASE_URL}/api/my-registrations`, { headers: { 'Authorization': `Bearer ${token}` } }),
-            fetch(`${API_BASE_URL}/api/my-contributions`, { headers: { 'Authorization': `Bearer ${token}` } })
-          ]);
-          
-          if(!regsRes.ok || !contribsRes.ok) {
-            throw new Error("Falha ao buscar dados do paroquiano.");
-          }
-          
-          const regsData = await regsRes.json();
-          const contribsData = await contribsRes.json();
+      if (!currentUser) return;
+      
+      const token = localStorage.getItem('token');
+      try {
+        // Busca dados pessoais
+        const [regsRes, contribsRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/my-registrations`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${API_BASE_URL}/api/my-contributions`, { headers: { 'Authorization': `Bearer ${token}` } })
+        ]);
+        if(!regsRes.ok || !contribsRes.ok) throw new Error("Falha ao buscar dados do paroquiano.");
+        setMyRegistrations(await regsRes.json() || []);
+        setMyContributions(await contribsRes.json() || []);
 
-          setMyRegistrations(regsData || []);
-          setMyContributions(contribsData || []);
-        } catch (err) {
-           console.error("Erro detalhado ao buscar dados do paroquiano:", err);
-           showNotification(`Erro: ${err.message}`, 'error');
+        // Se for admin, busca todos os dados de inscrições
+        if (currentUser.isAdmin) {
+          const allRegsRes = await fetch(`${API_BASE_URL}/api/admin/registrations`, { headers: { 'Authorization': `Bearer ${token}` } });
+          if (!allRegsRes.ok) throw new Error("Falha ao buscar dados de administração.");
+          setAllRegistrations(await allRegsRes.json() || []);
         }
+
+      } catch (err) {
+         showNotification(`Erro: ${err.message}`, 'error');
       }
     };
 
     fetchUserData();
   }, [currentUser]);
 
-  // Função para mostrar notificações
-  const showNotification = (message, type = 'success') => {
-    setNotification({ show: true, message, type });
-    setTimeout(() => {
-      setNotification({ show: false, message: '', type: 'success' });
-    }, 5000);
-  };
-
+  // ... (funções showNotification, handleAuthClick, handleCloseModal, handleRegisterSubmit, etc. continuam iguais)
+  const showNotification = (message, type = 'success') => { setNotification({ show: true, message, type }); setTimeout(() => { setNotification({ show: false, message: '', type: 'success' }); }, 5000); };
   const handleAuthClick = () => setShowAuthModal(true);
-  const handleCloseModal = () => {
-    setShowAuthModal(false);
-    setShowPixModal(false);
-  }
+  const handleCloseModal = () => { setShowAuthModal(false); setShowPixModal(false); }
+  const handleRegisterSubmit = async (e) => { e.preventDefault(); const { name, email, password } = e.target.elements; try { const res = await fetch(`${API_BASE_URL}/api/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name.value, email: email.value, password: password.value }), }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Erro desconhecido'); showNotification(data.message); setIsRegistering(false); } catch (err) { showNotification(`Erro ao registar: ${err.message}`, 'error'); } };
+  const handleLoginSubmit = async (e) => { e.preventDefault(); const { email, password } = e.target.elements; try { const res = await fetch(`${API_BASE_URL}/api/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.value, password: password.value }), }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'E-mail ou senha inválidos'); localStorage.setItem('token', data.token); localStorage.setItem('user', JSON.stringify(data.user)); setCurrentUser(data.user); showNotification(data.message); handleCloseModal(); } catch (err) { showNotification(`Erro no login: ${err.message}`, 'error'); } };
+  const handleLogout = () => { localStorage.removeItem('token'); localStorage.removeItem('user'); setCurrentUser(null); setMyRegistrations([]); setMyContributions([]); setAllRegistrations([]); showNotification('Sessão encerrada com sucesso!'); };
+  const handleRegistration = async (serviceId) => { if (!currentUser) { showNotification('Por favor, faça login para se inscrever.', 'error'); handleAuthClick(); return; } const token = localStorage.getItem('token'); try { const res = await fetch(`${API_BASE_URL}/api/registrations`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, body: JSON.stringify({ service_id: serviceId }) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Não foi possível completar a inscrição.'); showNotification(data.message); const updatedRegsRes = await fetch(`${API_BASE_URL}/api/my-registrations`, { headers: { 'Authorization': `Bearer ${token}` }}); setMyRegistrations(await updatedRegsRes.json() || []); } catch (err) { showNotification(err.message, 'error'); } };
+  const handlePixContribution = async () => { const value = parseFloat(contributionAmount); if (!value || value <= 0) { showNotification('Por favor, insira um valor válido.', 'error'); return; } const token = localStorage.getItem('token'); try { const res = await fetch(`${API_BASE_URL}/api/contributions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, body: JSON.stringify({ value: value, method: 'PIX' }) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Não foi possível registar a contribuição.'); setShowPixModal(true); showNotification("Leia o QR Code ou copie a chave para contribuir."); const updatedContribsRes = await fetch(`${API_BASE_URL}/api/my-contributions`, { headers: { 'Authorization': `Bearer ${token}` }}); setMyContributions(await updatedContribsRes.json() || []); } catch (err) { showNotification(err.message, 'error'); } };
+  const copyPixKey = () => { const pixKey = "chave.pix.da.paroquia@email.com"; navigator.clipboard.writeText(pixKey).then(() => showNotification('Chave PIX copiada!'), () => showNotification('Falha ao copiar a chave.', 'error')); }
 
-  const handleRegisterSubmit = async (e) => {
-    e.preventDefault();
-    const { name, email, password } = e.target.elements;
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.value, email: email.value, password: password.value }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro desconhecido');
-      showNotification(data.message);
-      setIsRegistering(false);
-    } catch (err) {
-      showNotification(`Erro ao registar: ${err.message}`, 'error');
-    }
-  };
-
-  const handleLoginSubmit = async (e) => {
-    e.preventDefault();
-    const { email, password } = e.target.elements;
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.value, password: password.value }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'E-mail ou senha inválidos');
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      setCurrentUser(data.user);
-      showNotification(data.message);
-      handleCloseModal();
-    } catch (err) {
-      showNotification(`Erro no login: ${err.message}`, 'error');
-    }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setCurrentUser(null);
-    setMyRegistrations([]);
-    setMyContributions([]);
-    showNotification('Sessão encerrada com sucesso!');
-  };
-
-  const handleRegistration = async (serviceId) => {
-    if (!currentUser) {
-      showNotification('Por favor, faça login para se inscrever.', 'error');
-      handleAuthClick();
-      return;
-    }
-    const token = localStorage.getItem('token');
-    try {
-        const res = await fetch(`${API_BASE_URL}/api/registrations`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
-            body: JSON.stringify({ service_id: serviceId })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Não foi possível completar a inscrição.');
-        showNotification(data.message);
-        const updatedRegsRes = await fetch(`${API_BASE_URL}/api/my-registrations`, { headers: { 'Authorization': `Bearer ${token}` }});
-        setMyRegistrations(await updatedRegsRes.json() || []);
-    } catch (err) {
-        showNotification(err.message, 'error');
-    }
-  };
-
-  const handlePixContribution = async () => {
-    const value = parseFloat(contributionAmount);
-    if (!value || value <= 0) {
-      showNotification('Por favor, insira um valor válido.', 'error');
-      return;
-    }
-    const token = localStorage.getItem('token');
-    try {
-        const res = await fetch(`${API_BASE_URL}/api/contributions`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
-            body: JSON.stringify({ value: value, method: 'PIX' })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Não foi possível registar a contribuição.');
-        setShowPixModal(true);
-        showNotification("Leia o QR Code ou copie a chave para contribuir.");
-        const updatedContribsRes = await fetch(`${API_BASE_URL}/api/my-contributions`, { headers: { 'Authorization': `Bearer ${token}` }});
-        setMyContributions(await updatedContribsRes.json() || []);
-    } catch (err) {
-        showNotification(err.message, 'error');
-    }
-  };
-  
-  const copyPixKey = () => {
-    const pixKey = "chave.pix.da.paroquia@email.com";
-    navigator.clipboard.writeText(pixKey).then(() => showNotification('Chave PIX copiada!'), () => showNotification('Falha ao copiar a chave.', 'error'));
-  }
 
   const timesByLocation = massTimes.reduce((acc, time) => {
       (acc[time.location] = acc[time.location] || []).push(time);
@@ -237,12 +139,53 @@ export default function App() {
     <div className="bg-gray-50 min-h-screen font-sans">
       {notification.show && (<div className={`fixed top-5 right-5 p-4 rounded-lg shadow-lg text-white ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'} animate-fade-in-out z-50`}>{notification.message}</div>)}
       <header className="bg-white shadow-md sticky top-0 z-20"><div className="container mx-auto px-6 py-4 flex justify-between items-center"><div className="flex items-center space-x-2"><HomeIcon className="text-yellow-500" /><h1 className="text-2xl font-bold text-gray-800">{parishInfo.name}</h1></div><div>{currentUser ? (<div className="flex items-center space-x-4"><span className="text-gray-700">Bem-vindo(a), {currentUser.name}!</span><button onClick={handleLogout} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full transition duration-300">Logout</button></div>) : (<button onClick={handleAuthClick} className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-full flex items-center space-x-2 transition duration-300"><UserCircleIcon /><span>Login / Cadastro</span></button>)}</div></div></header>
-      <main className="container mx-auto px-6 py-8">{currentUser && (<section id="parishioner-area" className="mb-12 bg-white p-6 rounded-xl shadow-lg"><h2 className="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-yellow-500 pb-2">Área do Paroquiano</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"><div><h3 className="text-2xl font-semibold text-gray-700 mb-4">Minhas Inscrições</h3>{myRegistrations.length > 0 ? (<ul className="space-y-4">{myRegistrations.map(reg => (<li key={reg.ID} className="p-4 bg-gray-100 rounded-lg"><h4 className="font-semibold text-lg text-gray-800">{reg.service?.name || 'Serviço não encontrado'}</h4><p className="text-sm text-gray-600">Status: <span className="font-medium text-yellow-600">{reg.status}</span></p></li>))}</ul>) : (<p className="text-gray-600">Você ainda não se inscreveu em nenhum serviço.</p>)}</div><div><h3 className="text-2xl font-semibold text-gray-700 mb-4">Contribuição</h3><div className="p-4 bg-gray-100 rounded-lg"><p className="text-gray-700 mb-4">A sua contribuição generosa ajuda a manter as obras da nossa paróquia.</p><div className="flex items-center space-x-2 mb-4"><span className="text-gray-800 font-bold text-lg">R$</span><input type="number" value={contributionAmount} onChange={(e) => setContributionAmount(e.target.value)} placeholder="0,00" className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"/></div><button onClick={handlePixContribution} className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full transition duration-300">Contribuir com PIX</button></div></div><div className="md:col-span-2 lg:col-span-1"><h3 className="text-2xl font-semibold text-gray-700 mb-4">Histórico de Contribuições</h3>{myContributions.length > 0 ? (<div className="overflow-x-auto"><table className="w-full text-sm text-left text-gray-500"><thead className="text-xs text-gray-700 uppercase bg-gray-100"><tr><th scope="col" className="px-4 py-3">Data</th><th scope="col" className="px-4 py-3">Valor</th><th scope="col" className="px-4 py-3">Método</th><th scope="col" className="px-4 py-3">Status</th></tr></thead><tbody>{myContributions.map(c => (<tr key={c.ID} className="bg-white border-b"><td className="px-4 py-3">{new Date(c.CreatedAt).toLocaleDateString('pt-BR')}</td><td className="px-4 py-3">R$ {c.value?.toFixed(2) || '0.00'}</td><td className="px-4 py-3">{c.method}</td><td className="px-4 py-3"><span className="font-medium text-orange-500">{c.status}</span></td></tr>))}</tbody></table></div>) : (<p className="text-gray-600">Nenhuma contribuição registada.</p>)}</div></div></section>)}
-      <section id="schedules" className="mb-12"><h2 className="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-yellow-500 pb-2">Horários e Atendimento</h2><div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-2 bg-white p-8 rounded-xl shadow-lg"><h3 className="text-2xl font-bold text-gray-700 mb-4 flex items-center"><CalendarIcon className="mr-2"/>Celebrações</h3><div className="space-y-6">{Object.entries(timesByLocation).map(([location, times]) => (<div key={location}><h4 className="text-xl font-bold text-gray-600 mb-3">{location}</h4><ul className="space-y-2 pl-4 border-l-2 border-gray-200">{times.map(t => (<li key={t.ID} className="flex items-center text-gray-700"><span className="font-semibold w-32">{t.day}</span><span className="font-medium w-24">{t.time}</span><span>{t.description}</span></li>))}</ul></div>))}</div></div><div className="space-y-8"><div className="bg-white p-6 rounded-xl shadow-lg"><h3 className="text-2xl font-bold text-gray-700 mb-4 flex items-center"><ClockIcon className="mr-2"/>Secretaria</h3><p className="text-gray-700 whitespace-pre-line">{parishInfo.secretariat_hours}</p></div><div className="bg-white p-6 rounded-xl shadow-lg"><h3 className="text-2xl font-bold text-gray-700 mb-4 flex items-center"><UserCircleIcon className="mr-2"/>Atendimento do Padre</h3><p className="text-gray-700 whitespace-pre-line">{parishInfo.priest_hours}</p></div></div></div></section>
-      <section id="history" className="mb-12"><h2 className="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-yellow-500 pb-2">Nossa História</h2><div className="bg-white p-8 rounded-xl shadow-lg"><p className="text-gray-700 leading-relaxed text-justify">{parishInfo.history}</p></div></section>
-      <section id="services" className="mb-12"><h2 className="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-yellow-500 pb-2">Serviços e Sacramentos</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">{services.map(service => (<div key={service.ID} className="bg-white rounded-xl shadow-lg overflow-hidden transform hover:-translate-y-2 transition duration-300"><div className="p-6"><h3 className="text-xl font-bold text-gray-800 mb-2">{service.name}</h3><p className="text-gray-600 mb-4">{service.description}</p><button onClick={() => handleRegistration(service.ID)} className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full transition duration-300">Inscrever-se</button></div></div>))}</div></section>
-      <section id="pastorals" className="mb-12"><h2 className="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-yellow-500 pb-2">Pastorais e Movimentos</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">{pastorals.map(pastoral => (<div key={pastoral.ID} className="bg-white p-6 rounded-xl shadow-lg"><h3 className="text-xl font-bold text-gray-800 mb-2">{pastoral.name}</h3><p className="text-gray-600 mb-4">{pastoral.description}</p><div className="text-sm text-gray-500"><p><span className="font-semibold">Reuniões:</span> {pastoral.meeting_info}</p></div></div>))}</div></section>
       
+      <main className="container mx-auto px-6 py-8">
+        {currentUser && (<section id="parishioner-area" className="mb-12 bg-white p-6 rounded-xl shadow-lg"><h2 className="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-yellow-500 pb-2">Área do Paroquiano</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"><div><h3 className="text-2xl font-semibold text-gray-700 mb-4">Minhas Inscrições</h3>{myRegistrations.length > 0 ? (<ul className="space-y-4">{myRegistrations.map(reg => (<li key={reg.ID} className="p-4 bg-gray-100 rounded-lg"><h4 className="font-semibold text-lg text-gray-800">{reg.service?.name || 'Serviço não encontrado'}</h4><p className="text-sm text-gray-600">Status: <span className="font-medium text-yellow-600">{reg.status}</span></p></li>))}</ul>) : (<p className="text-gray-600">Você ainda não se inscreveu em nenhum serviço.</p>)}</div><div><h3 className="text-2xl font-semibold text-gray-700 mb-4">Contribuição</h3><div className="p-4 bg-gray-100 rounded-lg"><p className="text-gray-700 mb-4">A sua contribuição generosa ajuda a manter as obras da nossa paróquia.</p><div className="flex items-center space-x-2 mb-4"><span className="text-gray-800 font-bold text-lg">R$</span><input type="number" value={contributionAmount} onChange={(e) => setContributionAmount(e.target.value)} placeholder="0,00" className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"/></div><button onClick={handlePixContribution} className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full transition duration-300">Contribuir com PIX</button></div></div><div className="md:col-span-2 lg:col-span-1"><h3 className="text-2xl font-semibold text-gray-700 mb-4">Histórico de Contribuições</h3>{myContributions.length > 0 ? (<div className="overflow-x-auto"><table className="w-full text-sm text-left text-gray-500"><thead className="text-xs text-gray-700 uppercase bg-gray-100"><tr><th scope="col" className="px-4 py-3">Data</th><th scope="col" className="px-4 py-3">Valor</th><th scope="col" className="px-4 py-3">Método</th><th scope="col" className="px-4 py-3">Status</th></tr></thead><tbody>{myContributions.map(c => (<tr key={c.ID} className="bg-white border-b"><td className="px-4 py-3">{new Date(c.CreatedAt).toLocaleDateString('pt-BR')}</td><td className="px-4 py-3">R$ {c.value?.toFixed(2) || '0.00'}</td><td className="px-4 py-3">{c.method}</td><td className="px-4 py-3"><span className="font-medium text-orange-500">{c.status}</span></td></tr>))}</tbody></table></div>) : (<p className="text-gray-600">Nenhuma contribuição registada.</p>)}</div></div></section>)}
+        
+        {/* Nova Área Administrativa */}
+        {currentUser && currentUser.isAdmin && (
+            <section id="admin-area" className="mb-12 bg-red-50 border border-red-200 p-6 rounded-xl shadow-lg">
+                <h2 className="text-3xl font-bold text-red-800 mb-6 border-b-2 border-red-500 pb-2 flex items-center"><AdminIcon className="mr-3"/>Área Administrativa</h2>
+                <div>
+                    <h3 className="text-2xl font-semibold text-gray-700 mb-4">Todas as Inscrições</h3>
+                    {allRegistrations.length > 0 ? (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left text-gray-500">
+                                <thead className="text-xs text-gray-700 uppercase bg-gray-100">
+                                    <tr>
+                                        <th scope="col" className="px-4 py-3">Paroquiano</th>
+                                        <th scope="col" className="px-4 py-3">E-mail</th>
+                                        <th scope="col" className="px-4 py-3">Serviço Inscrito</th>
+                                        <th scope="col" className="px-4 py-3">Data</th>
+                                        <th scope="col" className="px-4 py-3">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {allRegistrations.map(reg => (
+                                        <tr key={reg.ID} className="bg-white border-b">
+                                            <td className="px-4 py-3 font-medium">{reg.user?.name}</td>
+                                            <td className="px-4 py-3">{reg.user?.email}</td>
+                                            <td className="px-4 py-3">{reg.service?.name}</td>
+                                            <td className="px-4 py-3">{new Date(reg.CreatedAt).toLocaleString('pt-BR')}</td>
+                                            <td className="px-4 py-3"><span className="font-medium text-yellow-600">{reg.status}</span></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <p className="text-gray-600">Nenhuma inscrição encontrada.</p>
+                    )}
+                </div>
+            </section>
+        )}
+
+        <section id="schedules" className="mb-12"><h2 className="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-yellow-500 pb-2">Horários e Atendimento</h2><div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-2 bg-white p-8 rounded-xl shadow-lg"><h3 className="text-2xl font-bold text-gray-700 mb-4 flex items-center"><CalendarIcon className="mr-2"/>Celebrações</h3><div className="space-y-6">{Object.entries(timesByLocation).map(([location, times]) => (<div key={location}><h4 className="text-xl font-bold text-gray-600 mb-3">{location}</h4><ul className="space-y-2 pl-4 border-l-2 border-gray-200">{times.map(t => (<li key={t.ID} className="flex items-center text-gray-700"><span className="font-semibold w-32">{t.day}</span><span className="font-medium w-24">{t.time}</span><span>{t.description}</span></li>))}</ul></div>))}</div></div><div className="space-y-8"><div className="bg-white p-6 rounded-xl shadow-lg"><h3 className="text-2xl font-bold text-gray-700 mb-4 flex items-center"><ClockIcon className="mr-2"/>Secretaria</h3><p className="text-gray-700 whitespace-pre-line">{parishInfo.secretariat_hours}</p></div><div className="bg-white p-6 rounded-xl shadow-lg"><h3 className="text-2xl font-bold text-gray-700 mb-4 flex items-center"><UserCircleIcon className="mr-2"/>Atendimento do Padre</h3><p className="text-gray-700 whitespace-pre-line">{parishInfo.priest_hours}</p></div></div></div></section>
+        <section id="history" className="mb-12"><h2 className="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-yellow-500 pb-2">Nossa História</h2><div className="bg-white p-8 rounded-xl shadow-lg"><p className="text-gray-700 leading-relaxed text-justify">{parishInfo.history}</p></div></section>
+        <section id="services" className="mb-12"><h2 className="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-yellow-500 pb-2">Serviços e Sacramentos</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">{services.map(service => (<div key={service.ID} className="bg-white rounded-xl shadow-lg overflow-hidden transform hover:-translate-y-2 transition duration-300"><div className="p-6"><h3 className="text-xl font-bold text-gray-800 mb-2">{service.name}</h3><p className="text-gray-600 mb-4">{service.description}</p><button onClick={() => handleRegistration(service.ID)} className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full transition duration-300">Inscrever-se</button></div></div>))}</div></section>
+        <section id="pastorals" className="mb-12"><h2 className="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-yellow-500 pb-2">Pastorais e Movimentos</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">{pastorals.map(pastoral => (<div key={pastoral.ID} className="bg-white p-6 rounded-xl shadow-lg"><h3 className="text-xl font-bold text-gray-800 mb-2">{pastoral.name}</h3><p className="text-gray-600 mb-4">{pastoral.description}</p><div className="text-sm text-gray-500"><p><span className="font-semibold">Reuniões:</span> {pastoral.meeting_info}</p></div></div>))}</div></section>
+        
       <section id="social-media">
         <h2 className="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-yellow-500 pb-2">Acompanhe-nos nas Redes Sociais</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

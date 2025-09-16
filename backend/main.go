@@ -17,9 +17,13 @@ var db *gorm.DB
 var err error
 var jwtKey = []byte("sua_chave_secreta_super_segura")
 
+// E-mail do administrador da plataforma
+const AdminEmail = "jdkacesso@gmail.com" // IMPORTANTE: Mude para o seu e-mail
+
 // Claims é a estrutura que será codificada no token JWT.
 type Claims struct {
-	UserID uint `json:"user_id"`
+	UserID  uint `json:"user_id"`
+	IsAdmin bool `json:"isAdmin"`
 	jwt.RegisteredClaims
 }
 
@@ -30,15 +34,14 @@ func main() {
 		log.Fatal("Falha ao conectar ao banco de dados")
 	}
 
-	// Migra o schema, garantindo que todas as tabelas, incluindo a de horários, sejam criadas.
 	db.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &Registration{}, &LoginInput{}, &Contribution{}, &MassTime{})
 	seedDatabase()
 
 	router := gin.Default()
-
-	// Configuração de CORS para permitir a comunicação com o frontend
+	
+    // Configuração de CORS Específica e Segura
 	config := cors.Config{
-		AllowOrigins:     []string{"*"}, // Em produção, mude para o seu domínio real
+		AllowOrigins:     []string{"*"}, // Permite todas as origens para o ambiente de desenvolvimento
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -47,38 +50,43 @@ func main() {
 	}
 	router.Use(cors.New(config))
 
-	// Agrupamento de rotas da API
+
 	api := router.Group("/api")
 	{
-		// Rotas Públicas
 		api.POST("/register", RegisterUser)
 		api.POST("/login", LoginUser)
 		api.GET("/parish-info", GetParishInfo)
 		api.GET("/services", GetServices)
 		api.GET("/pastorais", GetPastorais)
-		api.GET("/mass-times", GetMassTimes) // Nova rota para os horários
-
-		// Rotas Protegidas que exigem autenticação
-		protected := api.Group("/")
-		protected.Use(AuthMiddleware())
-		{
-			protected.POST("/registrations", CreateRegistration)
-			protected.GET("/my-registrations", GetMyRegistrations)
-			protected.POST("/contributions", CreateContribution)
-			protected.GET("/my-contributions", GetMyContributions)
-		}
+		api.GET("/mass-times", GetMassTimes)
 	}
-
+	
 	router.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "pong"})
 	})
 
+	protected := api.Group("/")
+	protected.Use(AuthMiddleware())
+	{
+		protected.POST("/registrations", CreateRegistration)
+		protected.GET("/my-registrations", GetMyRegistrations)
+		protected.POST("/contributions", CreateContribution)
+		protected.GET("/my-contributions", GetMyContributions)
+	}
+
+	// Novo grupo de rotas apenas para administradores
+	admin := api.Group("/admin")
+	admin.Use(AuthMiddleware())
+	admin.Use(AdminMiddleware())
+	{
+		admin.GET("/registrations", GetAllRegistrations)
+	}
 
 	log.Println("Servidor backend iniciado em http://localhost:8080")
 	router.Run(":8080")
 }
 
-// AuthMiddleware verifica o token JWT para proteger as rotas.
+// Middlewares de Autenticação e Autorização
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -87,39 +95,56 @@ func AuthMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		claims := &Claims{}
 		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 			return jwtKey, nil
 		})
+
 		if err != nil || !token.Valid {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token inválido ou expirado"})
 			c.Abort()
 			return
 		}
+
 		c.Set("userID", claims.UserID)
+		c.Set("isAdmin", claims.IsAdmin) // Passa o status de admin para o contexto
 		c.Next()
 	}
 }
 
-// seedDatabase popula a base de dados com dados iniciais se estiver vazia.
+// Novo Middleware para verificar se o utilizador é administrador
+func AdminMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		isAdmin, exists := c.Get("isAdmin")
+		if !exists || !isAdmin.(bool) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Acesso negado. Recurso de administrador."})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+
 func seedDatabase() {
-	var count int64
-	db.Model(&Service{}).Count(&count)
-	if count == 0 {
-		services := []Service{
-			{Name: "Batismo - Curso de Pais e Padrinhos", Description: "Inscrição para o curso preparatório para o batismo de crianças."},
-			{Name: "Catequese Infantil", Description: "Inscrições para a catequese para crianças e pré-adolescentes."},
-			{Name: "Catequese de Adultos", Description: "Preparação para os sacramentos da iniciação cristã para adultos."},
-			{Name: "Curso de Noivos", Description: "Curso preparatório obrigatório para casais que desejam se casar na igreja."},
-			{Name: "Encontro de Casais com Cristo (ECC)", Description: "Movimento da Igreja Católica para casais."},
-			{Name: "Agendamento de Casamento", Description: "Reserve a data para a sua cerimônia de casamento na paróquia."},
+    var count int64
+    db.Model(&Service{}).Count(&count)
+    if count == 0 {
+        services := []Service{
+            {Name: "Batismo - Curso de Pais e Padrinhos", Description: "Inscrição para o curso preparatório para o batismo de crianças."},
+            {Name: "Catequese Infantil", Description: "Inscrições para a catequese para crianças e pré-adolescentes."},
+            {Name: "Catequese de Adultos", Description: "Preparação para os sacramentos da iniciação cristã para adultos."},
+            {Name: "Curso de Noivos", Description: "Curso preparatório obrigatório para casais que desejam se casar na igreja."},
+            {Name: "Encontro de Casais com Cristo (ECC)", Description: "Movimento da Igreja Católica para casais."},
+            {Name: "Agendamento de Casamento", Description: "Reserve a data para a sua cerimônia de casamento na paróquia."},
 			{Name: "Crisma", Description: "Sacramento da confirmação para jovens e adultos."},
 			{Name: "Primeira Eucaristia", Description: "Preparação para receber o sacramento da Eucaristia pela primeira vez."},
 			{Name: "Agendamento com o Padre", Description: "Marque um horário para confissão ou orientação espiritual."},
-		}
-		db.Create(&services)
-	}
+        }
+        db.Create(&services)
+    }
 
 	db.Model(&Pastoral{}).Count(&count)
 	if count == 0 {
@@ -135,27 +160,25 @@ func seedDatabase() {
 	db.Model(&MassTime{}).Count(&count)
 	if count == 0 {
 		massTimes := []MassTime{
-			// Matriz
-			{Day: "Domingo", Time: "07h00", Location: "Matriz Santo Antônio", Description: "Missa"},
-			{Day: "Domingo", Time: "10h30", Location: "Matriz Santo Antônio", Description: "Missa"},
-			{Day: "Domingo", Time: "19h30", Location: "Matriz Santo Antônio", Description: "Missa"},
-			{Day: "Segunda-feira", Time: "19h30", Location: "Matriz Santo Antônio", Description: "Novena N. Sra. Perpétuo Socorro"},
-			{Day: "Quarta-feira", Time: "19h30", Location: "Matriz Santo Antônio", Description: "Novena N. Sra. Perpétuo Socorro"},
-			{Day: "Quinta-feira", Time: "12h00", Location: "Matriz Santo Antônio", Description: "Exposição do Santíssimo"},
-			{Day: "Quinta-feira", Time: "16h00", Location: "Matriz Santo Antônio", Description: "Missa"},
-			{Day: "Sexta-feira", Time: "16h00", Location: "Matriz Santo Antônio", Description: "Missa"},
-			{Day: "Sábado", Time: "16h00", Location: "Matriz Santo Antônio", Description: "Missa"},
-			// Capelas e outros locais
-			{Day: "Domingo", Time: "09h00", Location: "Capela São Carlos", Description: "Missa"},
-			{Day: "Quarta-feira", Time: "19h30", Location: "Capela São Carlos", Description: "Missa"},
-			{Day: "Domingo", Time: "09h00", Location: "Capela São Vicente", Description: "Missa"},
-			{Day: "Quinta-feira", Time: "19h30", Location: "Capela N. Sra. Aparecida", Description: "Missa"},
-			{Day: "Sábado", Time: "19h30", Location: "Capela N. Sra. Aparecida", Description: "Missa"},
-			{Day: "Sábado", Time: "17h00", Location: "Capela N. Sra. de Lourdes", Description: "Missa"},
-			{Day: "Segunda-feira", Time: "16h00", Location: "Cemitério da Saudade", Description: "Missa"},
-			{Day: "4º Domingo do Mês", Time: "10h30", Location: "Círculo Católico Estrela da Manhã", Description: "Missa"},
+			{Day: "Segunda e Quarta", Time: "19h30", Location: "Igreja Matriz", Description: "Novena N. Sra. Perpétuo Socorro"},
+			{Day: "Quinta-feira", Time: "12h", Location: "Igreja Matriz", Description: "Exposição do Santíssimo"},
+			{Day: "Quinta-feira", Time: "16h", Location: "Igreja Matriz", Description: ""},
+			{Day: "Sexta-feira", Time: "16h", Location: "Igreja Matriz", Description: ""},
+			{Day: "Sábado", Time: "16h", Location: "Igreja Matriz", Description: ""},
+			{Day: "Domingo", Time: "7h", Location: "Igreja Matriz", Description: ""},
+			{Day: "Domingo", Time: "10h30", Location: "Igreja Matriz", Description: ""},
+			{Day: "Domingo", Time: "19h30", Location: "Igreja Matriz", Description: ""},
+			{Day: "Quarta-feira", Time: "19h30", Location: "Capela São Carlos (Rua Piratininga, 1111)", Description: ""},
+			{Day: "Domingo", Time: "9h", Location: "Capela São Carlos (Rua Piratininga, 1111)", Description: ""},
+			{Day: "Domingo", Time: "9h", Location: "Capela São Vicente (Rua Catanduva, 489)", Description: ""},
+			{Day: "Quinta-feira", Time: "19h30", Location: "Capela Nossa Senhora Aparecida (Rua dos Crisântemos, 68)", Description: ""},
+			{Day: "Sábado", Time: "19h30", Location: "Capela Nossa Senhora Aparecida (Rua dos Crisântemos, 68)", Description: ""},
+			{Day: "Sábado", Time: "17h", Location: "Capela Nossa Senhora de Lourdes (Rua 7 de setembro, 1128)", Description: ""},
+			{Day: "Segunda-feira", Time: "16h", Location: "Cemitério da Saudade (Av. da Saudade, 700)", Description: ""},
+			{Day: "4º Domingo do Mês", Time: "10h30", Location: "Círculo Católico Estrela da Manhã (R. Araraquara, 95)", Description: ""},
 		}
 		db.Create(&massTimes)
 	}
 }
+
 

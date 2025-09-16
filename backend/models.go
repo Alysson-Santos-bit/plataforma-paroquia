@@ -11,7 +11,8 @@ type User struct {
 	gorm.Model
 	Name     string `json:"name"`
 	Email    string `json:"email" gorm:"unique"`
-	Password string `json:"-" gorm:"size:255"`
+	Password string `json:"-" gorm:"size:255"` 
+	IsAdmin  bool   `json:"isAdmin" gorm:"default:false"` // Novo campo para o administrador
 }
 
 // Service representa um serviço ou sacramento oferecido pela paróquia.
@@ -36,7 +37,18 @@ type Registration struct {
 	ServiceID uint    `json:"service_id"`
 	Status    string  `json:"status"`
 	Service   Service `json:"service" gorm:"foreignKey:ServiceID"`
+	User      User    `json:"user" gorm:"foreignKey:UserID"` // Adicionado para buscar os dados do utilizador
 }
+
+// Contribution representa uma contribuição do dízimo.
+type Contribution struct {
+	gorm.Model
+	UserID uint    `json:"user_id"`
+	Value  float64 `json:"value"`
+	Method string  `json:"method"` // Ex: "PIX", "Cartão"
+	Status string  `json:"status"` // Ex: "Pendente", "Confirmado"
+}
+
 
 // LoginInput define a estrutura para os dados de entrada do login.
 type LoginInput struct {
@@ -44,21 +56,12 @@ type LoginInput struct {
 	Password string `json:"password" binding:"required"`
 }
 
-// Contribution representa uma contribuição de dízimo.
-type Contribution struct {
-	gorm.Model
-	UserID uint    `json:"user_id"`
-	Value  float64 `json:"value"`
-	Method string  `json:"method"` // Ex: "PIX", "Cartão", "Boleto"
-	Status string  `json:"status"` // Ex: "Pendente", "Confirmado"
-}
-
-// MassTime representa um horário de missa ou evento.
+// MassTime representa um horário de missa
 type MassTime struct {
 	gorm.Model
-	Day         string `json:"day"`         // Ex: "Domingo", "Segunda-feira"
-	Time        string `json:"time"`        // Ex: "07h00", "19h30"
-	Location    string `json:"location"`    // Ex: "Matriz", "Capela São Carlos"
-	Description string `json:"description"` // Ex: "Missa", "Novena N. Sra. Perpétuo Socorro"
+	Day         string `json:"day"`
+	Time        string `json:"time"`
+	Location    string `json:"location"`
+	Description string `json:"description"`
 }
 
