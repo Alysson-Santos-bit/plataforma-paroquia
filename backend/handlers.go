@@ -221,7 +221,6 @@ func GetAllRegistrations(c *gin.Context) {
 	c.JSON(http.StatusOK, registrations)
 }
 
-// UpdateRegistrationStatus permite ao administrador alterar o status de uma inscrição.
 func UpdateRegistrationStatus(c *gin.Context) {
 	var input struct {
 		Status string `json:"status" binding:"required"`
@@ -230,20 +229,39 @@ func UpdateRegistrationStatus(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Novo status é obrigatório."})
 		return
 	}
-
 	regID := c.Param("id")
 	var registration Registration
 	if err := db.First(&registration, regID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Inscrição não encontrada."})
 		return
 	}
-
 	registration.Status = input.Status
 	if err := db.Save(&registration).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Falha ao atualizar o status."})
 		return
 	}
-
 	c.JSON(http.StatusOK, gin.H{"message": "Status da inscrição atualizado com sucesso!"})
+}
+
+// GetDashboardStats calcula e retorna as estatísticas para o dashboard.
+func GetDashboardStats(c *gin.Context) {
+	var totalUsers int64
+	var totalRegistrations int64
+	var totalContributions int64
+	var totalContributionValue float64
+
+	db.Model(&User{}).Count(&totalUsers)
+	db.Model(&Registration{}).Count(&totalRegistrations)
+	db.Model(&Contribution{}).Count(&totalContributions)
+	db.Model(&Contribution{}).Select("sum(value)").Row().Scan(&totalContributionValue)
+
+	stats := gin.H{
+		"total_users":              totalUsers,
+		"total_registrations":      totalRegistrations,
+		"total_contributions":      totalContributions,
+		"total_contribution_value": totalContributionValue,
+	}
+
+	c.JSON(http.StatusOK, stats)
 }
 

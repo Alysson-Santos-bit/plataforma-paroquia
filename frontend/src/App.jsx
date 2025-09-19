@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // --- Constante da API ---
 const API_BASE_URL = 'https://glorious-palm-tree-g4p549q76rqg29q96-8080.app.github.dev';
@@ -34,6 +35,7 @@ export default function App() {
   const [contributionAmount, setContributionAmount] = useState('');
   const [showPixModal, setShowPixModal] = useState(false);
   const [allRegistrations, setAllRegistrations] = useState([]);
+  const [dashboardStats, setDashboardStats] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -80,9 +82,13 @@ export default function App() {
         setMyRegistrations(await regsRes.json() || []);
         setMyContributions(await contribsRes.json() || []);
         if (currentUser.isAdmin) {
-          const allRegsRes = await fetch(`${API_BASE_URL}/api/admin/registrations`, { headers: { 'Authorization': `Bearer ${token}` } });
-          if (!allRegsRes.ok) throw new Error("Falha ao buscar dados de administração.");
+          const [allRegsRes, statsRes] = await Promise.all([
+             fetch(`${API_BASE_URL}/api/admin/registrations`, { headers: { 'Authorization': `Bearer ${token}` } }),
+             fetch(`${API_BASE_URL}/api/admin/stats`, { headers: { 'Authorization': `Bearer ${token}` } })
+          ]);
+          if (!allRegsRes.ok || !statsRes.ok) throw new Error("Falha ao buscar dados de administração.");
           setAllRegistrations(await allRegsRes.json() || []);
+          setDashboardStats(await statsRes.json());
         }
       } catch (err) {
          showNotification(`Erro: ${err.message}`, 'error');
@@ -96,12 +102,14 @@ export default function App() {
   const handleCloseModal = () => { setShowAuthModal(false); setShowPixModal(false); }
   const handleRegisterSubmit = async (e) => { e.preventDefault(); const { name, email, password, address, dob, gender } = e.target.elements; const userData = { name: name.value, email: email.value, password: password.value, address: address.value, dob: dob.value, gender: gender.value }; try { const res = await fetch(`${API_BASE_URL}/api/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(userData) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Erro desconhecido'); showNotification(data.message); setIsRegistering(false); } catch (err) { showNotification(`Erro ao registar: ${err.message}`, 'error'); } };
   const handleLoginSubmit = async (e) => { e.preventDefault(); const { email, password } = e.target.elements; try { const res = await fetch(`${API_BASE_URL}/api/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.value, password: password.value }), }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'E-mail ou senha inválidos'); localStorage.setItem('token', data.token); localStorage.setItem('user', JSON.stringify(data.user)); setCurrentUser(data.user); showNotification(data.message); handleCloseModal(); } catch (err) { showNotification(`Erro no login: ${err.message}`, 'error'); } };
-  const handleLogout = () => { localStorage.removeItem('token'); localStorage.removeItem('user'); setCurrentUser(null); setMyRegistrations([]); setMyContributions([]); setAllRegistrations([]); showNotification('Sessão encerrada com sucesso!'); };
-  const handleRegistration = async (serviceId) => { if (!currentUser) { showNotification('Por favor, faça login para se inscrever.', 'error'); handleAuthClick(); return; } const token = localStorage.getItem('token'); try { const res = await fetch(`${API_BASE_URL}/api/registrations`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, body: JSON.stringify({ service_id: serviceId }) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Não foi possível completar a inscrição.'); showNotification(data.message); const updatedRegsRes = await fetch(`${API_BASE_URL}/api/my-registrations`, { headers: { 'Authorization': `Bearer ${token}` }}); setMyRegistrations(await updatedRegsRes.json() || []); } catch (err) { showNotification(err.message, 'error'); } };
+  const handleLogout = () => { localStorage.removeItem('token'); localStorage.removeItem('user'); setCurrentUser(null); setMyRegistrations([]); setMyContributions([]); setAllRegistrations([]); setDashboardStats(null); showNotification('Sessão encerrada com sucesso!'); };
+  const handleRegistration = async (serviceId) => { if (!currentUser) { showNotification('Por favor, faça login para se inscrever.', 'error'); handleAuthClick(); return; } const token = localStorage.getItem('token'); try { const res = await fetch(`${API_BASE_URL}/api/registrations`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, body: JSON.stringify({ service_id: serviceId }) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Não foi possível completar a inscrição.'); showNotification(data.message); const updatedRegsRes = await fetch(`${API_BASE_URL}/api/my-registrations`, { headers: { 'Authorization': `Bearer ${token}` }}); setMyRegistrations(await updatedRegsRes.json() || []); if(currentUser.isAdmin) { const allRegsRes = await fetch(`${API_BASE_URL}/api/admin/registrations`, { headers: { 'Authorization': `Bearer ${token}` } }); setAllRegistrations(await allRegsRes.json() || []);} } catch (err) { showNotification(err.message, 'error'); } };
   const handlePixContribution = async () => { const value = parseFloat(contributionAmount); if (!value || value <= 0) { showNotification('Por favor, insira um valor válido.', 'error'); return; } const token = localStorage.getItem('token'); try { const res = await fetch(`${API_BASE_URL}/api/contributions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, body: JSON.stringify({ value: value, method: 'PIX' }) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Não foi possível registar a contribuição.'); setShowPixModal(true); showNotification("Leia o QR Code ou copie a chave para contribuir."); const updatedContribsRes = await fetch(`${API_BASE_URL}/api/my-contributions`, { headers: { 'Authorization': `Bearer ${token}` }}); setMyContributions(await updatedContribsRes.json() || []); } catch (err) { showNotification(err.message, 'error'); } };
   const copyPixKey = () => { const pixKey = "chave.pix.da.paroquia@email.com"; navigator.clipboard.writeText(pixKey).then(() => showNotification('Chave PIX copiada!'), () => showNotification('Falha ao copiar a chave.', 'error')); }
   const handleStatusChange = async (regId, newStatus) => { const token = localStorage.getItem('token'); try { const res = await fetch(`${API_BASE_URL}/api/admin/registrations/${regId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ status: newStatus }) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Falha ao atualizar status.'); showNotification('Status da inscrição atualizado com sucesso!'); setAllRegistrations(prevRegs => prevRegs.map(reg => reg.ID === regId ? { ...reg, status: newStatus } : reg)); } catch (err) { showNotification(err.message, 'error'); } };
+
   const timesByLocation = massTimes.reduce((acc, time) => { (acc[time.location] = acc[time.location] || []).push(time); return acc; }, {});
+  const chartData = services.map(service => ({ name: service.name, inscrições: allRegistrations.filter(reg => reg.service_id === service.ID).length })).filter(item => item.inscrições > 0);
 
   if (isLoading) return <div className="flex justify-center items-center h-screen bg-gray-100"><p className="text-xl">Carregando...</p></div>;
   if (error) return <div className="flex justify-center items-center h-screen bg-red-100"><p className="text-xl text-red-700">{error}</p></div>;
@@ -112,52 +120,69 @@ export default function App() {
       <header className="bg-white shadow-md sticky top-0 z-20"><div className="container mx-auto px-4 sm:px-6 py-4 flex flex-wrap justify-between items-center"><div className="flex items-center space-x-2"><HomeIcon className="text-yellow-500 h-8 w-8" /><h1 className="text-xl sm:text-2xl font-bold text-gray-800">{parishInfo.name}</h1></div><div className="mt-2 sm:mt-0">{currentUser ? (<div className="flex items-center space-x-4"><span className="text-sm sm:text-base text-gray-700">Bem-vindo(a), {currentUser.name}!</span><button onClick={handleLogout} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 sm:px-4 rounded-full text-sm sm:text-base transition duration-300">Logout</button></div>) : (<button onClick={handleAuthClick} className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-3 sm:px-4 rounded-full flex items-center space-x-2 transition duration-300 text-sm sm:text-base"><UserCircleIcon /><span>Login / Cadastro</span></button>)}</div></div></header>
       
       <main className="container mx-auto px-4 sm:px-6 py-8 flex-grow">
-        {currentUser && (<section id="parishioner-area" className="mb-12 bg-white p-4 sm:p-6 rounded-xl shadow-lg"><h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6 border-b-2 border-yellow-500 pb-2">Área do Paroquiano</h2><div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div><h3 className="text-xl sm:text-2xl font-semibold text-gray-700 mb-4">Minhas Inscrições</h3>{myRegistrations.length > 0 ? (<ul className="space-y-4">{myRegistrations.map(reg => (<li key={reg.ID} className="p-4 bg-gray-100 rounded-lg"><h4 className="font-semibold text-lg text-gray-800">{reg.service?.name || 'Serviço não encontrado'}</h4><p className="text-sm text-gray-600">Status: <span className="font-medium text-yellow-600">{reg.status}</span></p></li>))}</ul>) : (<p className="text-gray-600">Você ainda não se inscreveu em nenhum serviço.</p>)}</div>
-                <div><h3 className="text-xl sm:text-2xl font-semibold text-gray-700 mb-4">Contribuição</h3><div className="p-4 bg-gray-100 rounded-lg"><p className="text-gray-700 mb-4">A sua contribuição generosa ajuda a manter as obras da nossa paróquia.</p><div className="flex items-center space-x-2 mb-4"><span className="text-gray-800 font-bold text-lg">R$</span><input type="number" value={contributionAmount} onChange={(e) => setContributionAmount(e.target.value)} placeholder="0,00" className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"/></div><button onClick={handlePixContribution} className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full transition duration-300">Contribuir com PIX</button></div></div>
-            </div>
-            <div className="lg:col-span-1"><h3 className="text-xl sm:text-2xl font-semibold text-gray-700 mb-4">Histórico de Contribuições</h3><div className="text-xs text-gray-500 mb-2 md:hidden">(Deslize a tabela para ver mais)</div><div className="overflow-x-auto">{myContributions.length > 0 ? (<table className="w-full text-sm text-left text-gray-500"><thead className="text-xs text-gray-700 uppercase bg-gray-100"><tr><th scope="col" className="px-4 py-3 whitespace-nowrap">Data</th><th scope="col" className="px-4 py-3 whitespace-nowrap">Valor</th><th scope="col" className="px-4 py-3">Método</th><th scope="col" className="px-4 py-3">Status</th></tr></thead><tbody>{myContributions.map(c => (<tr key={c.ID} className="bg-white border-b"><td className="px-4 py-3 whitespace-nowrap">{new Date(c.CreatedAt).toLocaleDateString('pt-BR')}</td><td className="px-4 py-3 whitespace-nowrap">R$ {c.value?.toFixed(2) || '0.00'}</td><td className="px-4 py-3">{c.method}</td><td className="px-4 py-3"><span className="font-medium text-orange-500">{c.status}</span></td></tr>))}</tbody></table>) : (<p className="text-gray-600">Nenhuma contribuição registada.</p>)}</div></div>
-        </div></section>)}
+        {currentUser && !currentUser.isAdmin && (<section id="parishioner-area" className="mb-12 bg-white p-4 sm:p-6 rounded-xl shadow-lg"><h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6 border-b-2 border-yellow-500 pb-2">Área do Paroquiano</h2><div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8"><div><h3 className="text-xl sm:text-2xl font-semibold text-gray-700 mb-4">Minhas Inscrições</h3>{myRegistrations.length > 0 ? (<ul className="space-y-4">{myRegistrations.map(reg => (<li key={reg.ID} className="p-4 bg-gray-100 rounded-lg"><h4 className="font-semibold text-lg text-gray-800">{reg.service?.name || 'Serviço não encontrado'}</h4><p className="text-sm text-gray-600">Status: <span className="font-medium text-yellow-600">{reg.status}</span></p></li>))}</ul>) : (<p className="text-gray-600">Você ainda não se inscreveu em nenhum serviço.</p>)}</div><div><h3 className="text-xl sm:text-2xl font-semibold text-gray-700 mb-4">Contribuição</h3><div className="p-4 bg-gray-100 rounded-lg"><p className="text-gray-700 mb-4">A sua contribuição generosa ajuda a manter as obras da nossa paróquia.</p><div className="flex items-center space-x-2 mb-4"><span className="text-gray-800 font-bold text-lg">R$</span><input type="number" value={contributionAmount} onChange={(e) => setContributionAmount(e.target.value)} placeholder="0,00" className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"/></div><button onClick={handlePixContribution} className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full transition duration-300">Contribuir com PIX</button></div></div></div><div className="lg:col-span-1"><h3 className="text-xl sm:text-2xl font-semibold text-gray-700 mb-4">Histórico de Contribuições</h3><div className="text-xs text-gray-500 mb-2 md:hidden">(Deslize a tabela para ver mais)</div><div className="overflow-x-auto">{myContributions.length > 0 ? (<table className="w-full text-sm text-left text-gray-500"><thead className="text-xs text-gray-700 uppercase bg-gray-100"><tr><th scope="col" className="px-4 py-3 whitespace-nowrap">Data</th><th scope="col" className="px-4 py-3 whitespace-nowrap">Valor</th><th scope="col" className="px-4 py-3">Método</th><th scope="col" className="px-4 py-3">Status</th></tr></thead><tbody>{myContributions.map(c => (<tr key={c.ID} className="bg-white border-b"><td className="px-4 py-3 whitespace-nowrap">{new Date(c.CreatedAt).toLocaleDateString('pt-BR')}</td><td className="px-4 py-3 whitespace-nowrap">R$ {c.value?.toFixed(2) || '0.00'}</td><td className="px-4 py-3">{c.method}</td><td className="px-4 py-3"><span className="font-medium text-orange-500">{c.status}</span></td></tr>))}</tbody></table>) : (<p className="text-gray-600">Nenhuma contribuição registada.</p>)}</div></div></div></section>)}
         
         {currentUser && currentUser.isAdmin && (
             <section id="admin-area" className="mb-12 bg-red-50 border border-red-200 p-4 sm:p-6 rounded-xl shadow-lg">
-                <h2 className="text-2xl sm:text-3xl font-bold text-red-800 mb-6 border-b-2 border-red-500 pb-2 flex items-center"><AdminIcon className="mr-3"/>Área Administrativa</h2>
-                <div>
-                    <h3 className="text-xl sm:text-2xl font-semibold text-gray-700 mb-4">Todas as Inscrições</h3>
-                    <div className="text-xs text-gray-500 mb-2 md:hidden">(Deslize a tabela para ver mais)</div>
-                    {allRegistrations.length > 0 ? (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left text-gray-500">
-                                <thead className="text-xs text-gray-700 uppercase bg-gray-100">
-                                    <tr>
-                                        <th scope="col" className="px-4 py-3 whitespace-nowrap">Paroquiano</th>
-                                        <th scope="col" className="px-4 py-3 whitespace-nowrap">E-mail</th>
-                                        <th scope="col" className="px-4 py-3 whitespace-nowrap">Serviço Inscrito</th>
-                                        <th scope="col" className="px-4 py-3 whitespace-nowrap">Data</th>
-                                        <th scope="col" className="px-4 py-3">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {allRegistrations.map(reg => (
-                                        <tr key={reg.ID} className="bg-white border-b">
-                                            <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{reg.user?.name}</td>
-                                            <td className="px-4 py-3 whitespace-nowrap">{reg.user?.email}</td>
-                                            <td className="px-4 py-3 whitespace-nowrap">{reg.service?.name}</td>
-                                            <td className="px-4 py-3 whitespace-nowrap">{new Date(reg.CreatedAt).toLocaleString('pt-BR')}</td>
-                                            <td className="px-4 py-3">
-                                                <select value={reg.status} onChange={(e) => handleStatusChange(reg.ID, e.target.value)} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                                                    <option value="Pendente">Pendente</option>
-                                                    <option value="Confirmada">Confirmada</option>
-                                                    <option value="Recusada">Recusada</option>
-                                                </select>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                <h2 className="text-2xl sm:text-3xl font-bold text-red-800 mb-6 border-b-2 border-red-500 pb-2 flex items-center"><AdminIcon className="mr-3"/>Dashboard Administrativo</h2>
+                {dashboardStats && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        <div className="bg-white p-4 rounded-lg shadow"><h4 className="text-sm font-semibold text-gray-500">Total de Paroquianos</h4><p className="text-3xl font-bold text-gray-800">{dashboardStats.total_users}</p></div>
+                        <div className="bg-white p-4 rounded-lg shadow"><h4 className="text-sm font-semibold text-gray-500">Total de Inscrições</h4><p className="text-3xl font-bold text-gray-800">{dashboardStats.total_registrations}</p></div>
+                        <div className="bg-white p-4 rounded-lg shadow"><h4 className="text-sm font-semibold text-gray-500">Total de Contribuições</h4><p className="text-3xl font-bold text-gray-800">{dashboardStats.total_contributions}</p></div>
+                        <div className="bg-white p-4 rounded-lg shadow"><h4 className="text-sm font-semibold text-gray-500">Valor Arrecadado (PIX)</h4><p className="text-3xl font-bold text-gray-800">R$ {dashboardStats.total_contribution_value?.toFixed(2) || '0.00'}</p></div>
+                    </div>
+                )}
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    <div>
+                        <h3 className="text-xl sm:text-2xl font-semibold text-gray-700 mb-4">Inscrições por Serviço</h3>
+                        <div className="bg-white p-4 rounded-lg shadow" style={{ height: '400px' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="name" angle={-35} textAnchor="end" height={120} interval={0} tick={{ fontSize: 12 }}/>
+                                    <YAxis allowDecimals={false} />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Bar dataKey="inscrições" fill="#b91c1c" />
+                                </BarChart>
+                            </ResponsiveContainer>
                         </div>
-                    ) : (<p className="text-gray-600">Nenhuma inscrição encontrada.</p>)}
+                    </div>
+                    <div>
+                        <h3 className="text-xl sm:text-2xl font-semibold text-gray-700 mb-4">Gerir Inscrições</h3>
+                        <div className="text-xs text-gray-500 mb-2 md:hidden">(Deslize a tabela para ver mais)</div>
+                        {allRegistrations.length > 0 ? (
+                            <div className="overflow-x-auto max-h-[400px]">
+                                <table className="w-full text-sm text-left text-gray-500">
+                                    <thead className="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0">
+                                        <tr>
+                                            <th scope="col" className="px-4 py-3 whitespace-nowrap">Paroquiano</th>
+                                            <th scope="col" className="px-4 py-3 whitespace-nowrap">Serviço Inscrito</th>
+                                            <th scope="col" className="px-4 py-3 whitespace-nowrap">Data</th>
+                                            <th scope="col" className="px-4 py-3">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {allRegistrations.map(reg => (
+                                            <tr key={reg.ID} className="bg-white border-b">
+                                                <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{reg.user?.name}</td>
+                                                <td className="px-4 py-3 whitespace-nowrap">{reg.service?.name}</td>
+                                                <td className="px-4 py-3 whitespace-nowrap">{new Date(reg.CreatedAt).toLocaleDateString('pt-BR')}</td>
+                                                <td className="px-4 py-3">
+                                                    <select value={reg.status} onChange={(e) => handleStatusChange(reg.ID, e.target.value)} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1.5">
+                                                        <option value="Pendente">Pendente</option>
+                                                        <option value="Confirmada">Confirmada</option>
+                                                        <option value="Recusada">Recusada</option>
+                                                    </select>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (<p className="text-gray-600">Nenhuma inscrição encontrada.</p>)}
+                    </div>
                 </div>
             </section>
         )}

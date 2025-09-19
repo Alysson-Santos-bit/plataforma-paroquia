@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
+	"time" // Re-adicionado para a configuração do CORS
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -18,7 +18,7 @@ var err error
 var jwtKey = []byte("sua_chave_secreta_super_segura")
 
 // E-mail do administrador da plataforma
-const AdminEmail = "jdkacesso@gmail.com" // IMPORTANTE: Mude para o seu e-mail
+const AdminEmail = "jdkacesso@gmail.com" // IMPORTANTE: Mude para o seu e-mail se for diferente
 
 // Claims é a estrutura que será codificada no token JWT.
 type Claims struct {
@@ -38,18 +38,17 @@ func main() {
 	seedDatabase()
 
 	router := gin.Default()
-	
-    // Configuração de CORS Específica e Segura para permitir o cabeçalho de Autorização
+
+	// A CORREÇÃO DEFINITIVA: Configuração de CORS explícita e completa.
 	config := cors.Config{
-		AllowOrigins:     []string{"*"}, // Permite todas as origens para o ambiente de desenvolvimento
+		AllowOrigins:     []string{"*"}, // Para desenvolvimento. Pode ser restringido depois.
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"}, // A adição de "Authorization" aqui é a correção.
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"}, // Permite o cabeçalho de autorização.
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}
 	router.Use(cors.New(config))
-
 
 	api := router.Group("/api")
 	{
@@ -80,6 +79,7 @@ func main() {
 	{
 		admin.GET("/registrations", GetAllRegistrations)
 		admin.PATCH("/registrations/:id", UpdateRegistrationStatus)
+		admin.GET("/stats", GetDashboardStats)
 	}
 
 	log.Println("Servidor backend iniciado em http://localhost:8080")
@@ -135,8 +135,8 @@ func seedDatabase() {
             {Name: "Curso de Noivos", Description: "Curso preparatório obrigatório para casais que desejam se casar na igreja."},
             {Name: "Encontro de Casais com Cristo (ECC)", Description: "Movimento da Igreja Católica para casais."},
             {Name: "Agendamento de Casamento", Description: "Reserve a data para a sua cerimônia de casamento na paróquia."},
-			{Name: "Crisma", Description: "Sacramento da confirmação para jovens e adultos."},
-			{Name: "Primeira Eucaristia", Description: "Preparação para receber o sacramento da Eucaristia pela primeira vez."},
+						{Name: "Crisma", Description: "Sacramento da confirmação para jovens e adultos."},
+						{Name: "Primeira Eucaristia", Description: "Preparação para receber o sacramento da Eucaristia pela primeira vez."},
         }
         db.Create(&services)
     }
@@ -176,4 +176,5 @@ func seedDatabase() {
 	}
 }
 
+    
 
