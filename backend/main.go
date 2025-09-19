@@ -19,7 +19,7 @@ var jwtKey = []byte("sua_chave_secreta_super_segura")
 
 // E-mail do administrador da plataforma
 // !! VERIFIQUE E ALTERE ESTE E-MAIL PARA O SEU !!
-const AdminEmail = "seu-email-admin@exemplo.com" 
+const AdminEmail = "jdkacesso@gmail.com" 
 
 // Claims é a estrutura que será codificada no token JWT.
 type Claims struct {

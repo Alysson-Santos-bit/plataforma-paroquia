@@ -1,14 +1,29 @@
 services:
+  backend:
+    build: ./backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: always
+
+  frontend:
+    build: ./frontend
+    ports:
+      # Nginx serve na porta 80 por padrão. Mapeamos para 3000 para o Codespaces.
+      - "3000:80" 
+    depends_on:
+      - backend
+    restart: always
+
   db:
     image: postgres:14-alpine
-    container_name: paroquia-db
     restart: always
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: paroquia_db
-    ports:
-      - "5432:5432"
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=paroquia_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -16,27 +31,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  backend:
-    build: ./backend
-    container_name: paroquia-backend
-    restart: always
-    ports:
-      - "8080:8080"
-    environment:
-      DATABASE_URL: "host=db user=user password=password dbname=paroquia_db port=5432 sslmode=disable"
-    depends_on:
-      db:
-        condition: service_healthy
-
-  frontend:
-    build: ./frontend
-    container_name: paroquia-frontend
-    restart: always
-    ports:
-      - "3000:3000"
-    # A linha de volumes foi removida para garantir que a imagem construída seja sempre usada.
-    # isto resolve problemas de cache e ficheiros "fantasma".
 
 volumes:
   postgres_data:

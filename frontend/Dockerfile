@@ -1,24 +1,28 @@
-FROM node:18-alpine
+# Estágio 1: Construir a aplicação React
+FROM node:18-alpine AS builder
 
-# Define o diretório de trabalho dentro do contêiner
 WORKDIR /app
 
-# Copia primeiro os arquivos de manifesto para aproveitar o cache do Docker
+# Copia o package.json e instala as dependências
 COPY package*.json ./
-
-# Instala todas as dependências
 RUN npm install
 
-# Copia TODO o resto do código (incluindo as pastas 'public' e 'src')
+# Copia todo o código fonte e constrói a versão de produção
 COPY . .
+RUN npm run build
 
-# ---- PASSO DE DEPURAÇÃO ----
-# O comando abaixo vai nos mostrar exatamente o que foi copiado para dentro do /app
-RUN echo "--- LISTANDO ARQUIVOS DENTRO DO CONTÊINER ---" && ls -laR /app
+# Estágio 2: Servir a aplicação com Nginx
+FROM nginx:stable-alpine
 
-# Expõe a porta que o React usa
-EXPOSE 3000
+# Copia os ficheiros estáticos construídos do estágio anterior
+COPY --from=builder /app/build /usr/share/nginx/html
 
-# O comando para iniciar o servidor de desenvolvimento
-CMD ["npm", "start"]
+# Copia a nossa configuração personalizada do Nginx
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Expõe a porta 80, que é a porta padrão para web
+EXPOSE 80
+
+# O comando para iniciar o Nginx já está incluído na imagem base
+CMD ["nginx", "-g", "daemon off;"]
 
