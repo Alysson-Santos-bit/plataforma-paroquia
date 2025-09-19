@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 	"strings"
-	"time" // Re-adicionado para a configuração do CORS
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -18,8 +18,7 @@ var err error
 var jwtKey = []byte("sua_chave_secreta_super_segura")
 
 // E-mail do administrador da plataforma
-// !! VERIFIQUE E ALTERE ESTE E-MAIL PARA O SEU !!
-const AdminEmail = "jdkacesso@gmail.com" 
+const AdminEmail = "jdkacesso@gmail.com"
 
 // Claims é a estrutura que será codificada no token JWT.
 type Claims struct {
@@ -40,17 +39,10 @@ func main() {
 
 	router := gin.Default()
 	
-    // A CORREÇÃO DEFINITIVA: Configuração de CORS explícita e completa.
-	config := cors.Config{
-		AllowOrigins:     []string{"*"}, // Para desenvolvimento. Pode ser restringido depois.
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"}, // Permite o cabeçalho de autorização.
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	}
+	config := cors.DefaultConfig()
+	config.AllowAllOrigins = true
+	config.AllowHeaders = append(config.AllowHeaders, "Authorization")
 	router.Use(cors.New(config))
-
 
 	api := router.Group("/api")
 	{
@@ -86,11 +78,14 @@ func main() {
 		admin.PUT("/users/:id", UpdateUser)
 	}
 
-	log.Println("Servidor backend iniciado em http://localhost:8080")
-	router.Run(":8080")
-}
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 
-// ... (Resto do ficheiro continua igual) ...
+	log.Printf("Servidor backend iniciado na porta %s", port)
+	router.Run(":" + port)
+}
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -179,6 +174,4 @@ func seedDatabase() {
 		db.Create(&massTimes)
 	}
 }
-
-    
 
