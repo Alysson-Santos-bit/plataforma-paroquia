@@ -16,6 +16,7 @@ const AdminIcon = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg
 const MailIcon = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>);
 const PhoneIcon = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>);
 const MapPinIcon = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>);
+const SpinnerIcon = (props) => ( <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> );
 
 
 // --- Componente Principal da Aplicação ---
@@ -40,6 +41,7 @@ export default function App() {
   const [allUsers, setAllUsers] = useState([]);
   const [editingUser, setEditingUser] = useState(null);
   const [showUserEditModal, setShowUserEditModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -85,7 +87,6 @@ export default function App() {
         if(!regsRes.ok || !contribsRes.ok) throw new Error("Falha ao buscar dados do paroquiano.");
         setMyRegistrations(await regsRes.json() || []);
         setMyContributions(await contribsRes.json() || []);
-
         if (currentUser.isAdmin) {
           const [allRegsRes, statsRes, allUsersRes] = await Promise.all([
              fetch(`${API_BASE_URL}/api/admin/registrations`, { headers: { 'Authorization': `Bearer ${token}` } }),
@@ -107,43 +108,14 @@ export default function App() {
   const showNotification = (message, type = 'success') => { setNotification({ show: true, message, type }); setTimeout(() => { setNotification({ show: false, message: '', type: 'success' }); }, 5000); };
   const handleAuthClick = () => setShowAuthModal(true);
   const handleCloseModal = () => { setShowAuthModal(false); setShowPixModal(false); setShowUserEditModal(false); setEditingUser(null); }
-  const handleRegisterSubmit = async (e) => { e.preventDefault(); const { name, email, password, address, dob, gender } = e.target.elements; const userData = { name: name.value, email: email.value, password: password.value, address: address.value, dob: dob.value, gender: gender.value }; try { const res = await fetch(`${API_BASE_URL}/api/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(userData) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Erro desconhecido'); showNotification(data.message); setIsRegistering(false); } catch (err) { showNotification(`Erro ao registar: ${err.message}`, 'error'); } };
-  const handleLoginSubmit = async (e) => { e.preventDefault(); const { email, password } = e.target.elements; try { const res = await fetch(`${API_BASE_URL}/api/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.value, password: password.value }), }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'E-mail ou senha inválidos'); localStorage.setItem('token', data.token); localStorage.setItem('user', JSON.stringify(data.user)); setCurrentUser(data.user); showNotification(data.message); handleCloseModal(); } catch (err) { showNotification(`Erro no login: ${err.message}`, 'error'); } };
+  const handleRegisterSubmit = async (e) => { e.preventDefault(); setIsSubmitting(true); const { name, email, password, address, dob, gender } = e.target.elements; const userData = { name: name.value, email: email.value, password: password.value, address: address.value, dob: dob.value, gender: gender.value }; try { const res = await fetch(`${API_BASE_URL}/api/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(userData) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Erro desconhecido'); showNotification(data.message); setTimeout(() => { setIsRegistering(false); setIsSubmitting(false); }, 1000); } catch (err) { showNotification(`Erro ao registar: ${err.message}`, 'error'); setIsSubmitting(false); } };
+  const handleLoginSubmit = async (e) => { e.preventDefault(); setIsSubmitting(true); const { email, password } = e.target.elements; try { const res = await fetch(`${API_BASE_URL}/api/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.value, password: password.value }), }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'E-mail ou senha inválidos'); showNotification(data.message); setTimeout(() => { localStorage.setItem('token', data.token); localStorage.setItem('user', JSON.stringify(data.user)); setCurrentUser(data.user); handleCloseModal(); setIsSubmitting(false); }, 1000); } catch (err) { showNotification(`Erro no login: ${err.message}`, 'error'); setIsSubmitting(false); } };
   const handleLogout = () => { localStorage.removeItem('token'); localStorage.removeItem('user'); setCurrentUser(null); setMyRegistrations([]); setMyContributions([]); setAllRegistrations([]); setDashboardStats(null); setAllUsers([]); showNotification('Sessão encerrada com sucesso!'); };
   const handleRegistration = async (serviceId) => { if (!currentUser) { showNotification('Por favor, faça login para se inscrever.', 'error'); handleAuthClick(); return; } const token = localStorage.getItem('token'); try { const res = await fetch(`${API_BASE_URL}/api/registrations`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, body: JSON.stringify({ service_id: serviceId }) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Não foi possível completar a inscrição.'); showNotification(data.message); const updatedRegsRes = await fetch(`${API_BASE_URL}/api/my-registrations`, { headers: { 'Authorization': `Bearer ${token}` }}); setMyRegistrations(await updatedRegsRes.json() || []); if(currentUser.isAdmin) { const allRegsRes = await fetch(`${API_BASE_URL}/api/admin/registrations`, { headers: { 'Authorization': `Bearer ${token}` } }); setAllRegistrations(await allRegsRes.json() || []);} } catch (err) { showNotification(err.message, 'error'); } };
   const handlePixContribution = async () => { const value = parseFloat(contributionAmount); if (!value || value <= 0) { showNotification('Por favor, insira um valor válido.', 'error'); return; } const token = localStorage.getItem('token'); try { const res = await fetch(`${API_BASE_URL}/api/contributions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, body: JSON.stringify({ value: value, method: 'PIX' }) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Não foi possível registar a contribuição.'); setShowPixModal(true); showNotification("Leia o QR Code ou copie a chave para contribuir."); const updatedContribsRes = await fetch(`${API_BASE_URL}/api/my-contributions`, { headers: { 'Authorization': `Bearer ${token}` }}); setMyContributions(await updatedContribsRes.json() || []); } catch (err) { showNotification(err.message, 'error'); } };
   const copyPixKey = () => { const pixKey = "chave.pix.da.paroquia@email.com"; navigator.clipboard.writeText(pixKey).then(() => showNotification('Chave PIX copiada!'), () => showNotification('Falha ao copiar a chave.', 'error')); }
   const handleStatusChange = async (regId, newStatus) => { const token = localStorage.getItem('token'); try { const res = await fetch(`${API_BASE_URL}/api/admin/registrations/${regId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ status: newStatus }) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Falha ao atualizar status.'); showNotification('Status da inscrição atualizado com sucesso!'); setAllRegistrations(prevRegs => prevRegs.map(reg => reg.ID === regId ? { ...reg, status: newStatus } : reg)); } catch (err) { showNotification(err.message, 'error'); } };
-  
-  const handleUpdateUser = async (e) => {
-    e.preventDefault();
-    if (!editingUser) return;
-    const token = localStorage.getItem('token');
-    const { name, email, address, dob, gender, isAdmin } = e.target.elements;
-    const updatedData = {
-        name: name.value,
-        email: email.value,
-        address: address.value,
-        dob: dob.value,
-        gender: gender.value,
-        isAdmin: isAdmin.checked
-    };
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/admin/users/${editingUser.ID}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(updatedData)
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Falha ao atualizar utilizador.');
-      showNotification('Utilizador atualizado com sucesso!');
-      setAllUsers(prevUsers => prevUsers.map(u => u.ID === editingUser.ID ? {...u, ...updatedData} : u));
-      handleCloseModal();
-    } catch (err) {
-      showNotification(err.message, 'error');
-    }
-  };
+  const handleUpdateUser = async (e) => { e.preventDefault(); if (!editingUser) return; setIsSubmitting(true); const token = localStorage.getItem('token'); const { name, email, address, dob, gender, isAdmin } = e.target.elements; const updatedData = { name: name.value, email: email.value, address: address.value, dob: dob.value, gender: gender.value, isAdmin: isAdmin.checked }; try { const res = await fetch(`${API_BASE_URL}/api/admin/users/${editingUser.ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(updatedData) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Falha ao atualizar utilizador.'); showNotification('Utilizador atualizado com sucesso!'); setTimeout(() => { setAllUsers(prevUsers => prevUsers.map(u => u.ID === editingUser.ID ? {...u, ...data.user} : u)); handleCloseModal(); setIsSubmitting(false); }, 1000); } catch (err) { showNotification(err.message, 'error'); setIsSubmitting(false); } };
 
   const timesByLocation = massTimes.reduce((acc, time) => { (acc[time.location] = acc[time.location] || []).push(time); return acc; }, {});
   const chartData = services.map(service => ({ name: service.name, inscrições: allRegistrations.filter(reg => reg.service_id === service.ID).length })).filter(item => item.inscrições > 0);
@@ -153,7 +125,17 @@ export default function App() {
 
   return (
     <div className="bg-gray-50 min-h-screen font-sans flex flex-col">
-      {notification.show && (<div className={`fixed top-5 right-5 p-4 rounded-lg shadow-lg text-white ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'} animate-fade-in-out z-50`}>{notification.message}</div>)}
+      <style>{`
+        @keyframes fade-in-out {
+          0% { opacity: 0; transform: translateY(-20px); }
+          10%, 90% { opacity: 1; transform: translateY(0); }
+          100% { opacity: 0; transform: translateY(-20px); }
+        }
+        .animate-fade-in-out {
+          animation: fade-in-out 5s forwards;
+        }
+      `}</style>
+      {notification.show && (<div className={`fixed top-5 right-5 p-4 rounded-lg shadow-lg text-white ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'} animate-fade-in-out z-[100]`}>{notification.message}</div>)}
       <header className="bg-white shadow-md sticky top-0 z-20"><div className="container mx-auto px-4 sm:px-6 py-4 flex flex-wrap justify-between items-center"><div className="flex items-center space-x-2"><HomeIcon className="text-yellow-500 h-8 w-8" /><h1 className="text-xl sm:text-2xl font-bold text-gray-800">{parishInfo.name}</h1></div><div className="mt-2 sm:mt-0">{currentUser ? (<div className="flex items-center space-x-4"><span className="text-sm sm:text-base text-gray-700">Bem-vindo(a), {currentUser.name}!</span><button onClick={handleLogout} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 sm:px-4 rounded-full text-sm sm:text-base transition duration-300">Logout</button></div>) : (<button onClick={handleAuthClick} className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-3 sm:px-4 rounded-full flex items-center space-x-2 transition duration-300 text-sm sm:text-base"><UserCircleIcon /><span>Login / Cadastro</span></button>)}</div></div></header>
       
       <main className="container mx-auto px-4 sm:px-6 py-8 flex-grow">
@@ -173,18 +155,13 @@ export default function App() {
                                         </li>
                                     ))}
                                 </ul>
-                            ) : (
-                                <p className="text-gray-600">Você ainda não se inscreveu em nenhum serviço.</p>
-                            )}
+                            ) : (<p className="text-gray-600">Você ainda não se inscreveu em nenhum serviço.</p>)}
                         </div>
                         <div>
                             <h3 className="text-xl sm:text-2xl font-semibold text-gray-700 mb-4">Contribuição</h3>
                             <div className="p-4 bg-gray-100 rounded-lg">
                                 <p className="text-gray-700 mb-4">A sua contribuição generosa ajuda a manter as obras da nossa paróquia.</p>
-                                <div className="flex items-center space-x-2 mb-4">
-                                    <span className="text-gray-800 font-bold text-lg">R$</span>
-                                    <input type="number" value={contributionAmount} onChange={(e) => setContributionAmount(e.target.value)} placeholder="0,00" className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"/>
-                                </div>
+                                <div className="flex items-center space-x-2 mb-4"><span className="text-gray-800 font-bold text-lg">R$</span><input type="number" value={contributionAmount} onChange={(e) => setContributionAmount(e.target.value)} placeholder="0,00" className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"/></div>
                                 <button onClick={handlePixContribution} className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full transition duration-300">Contribuir com PIX</button>
                             </div>
                         </div>
@@ -207,16 +184,14 @@ export default function App() {
                                         {myContributions.map(c => (
                                             <tr key={c.ID} className="bg-white border-b">
                                                 <td className="px-4 py-3 whitespace-nowrap">{new Date(c.CreatedAt).toLocaleDateString('pt-BR')}</td>
-                                                <td className="px-4 py-3 whitespace-nowrap">R$ {c.value?.toFixed(2) || '0.00'}</td>
+                                                <td className="px-4 py-3 whitespace-nowrap">R$ {typeof c.value === 'number' ? c.value.toFixed(2) : '0.00'}</td>
                                                 <td className="px-4 py-3">{c.method}</td>
                                                 <td className="px-4 py-3"><span className="font-medium text-orange-500">{c.status}</span></td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
-                            ) : (
-                                <p className="text-gray-600">Nenhuma contribuição registada.</p>
-                            )}
+                            ) : (<p className="text-gray-600">Nenhuma contribuição registada.</p>)}
                         </div>
                     </div>
                 </div>
@@ -228,15 +203,9 @@ export default function App() {
                 <h2 className="text-2xl sm:text-3xl font-bold text-red-800 mb-6 border-b-2 border-red-500 pb-2 flex items-center"><AdminIcon className="mr-3"/>Painel Administrativo</h2>
                 <div className="mb-6 border-b border-gray-200">
                     <ul className="flex flex-wrap -mb-px text-sm font-medium text-center text-gray-500">
-                        <li className="mr-2">
-                            <button onClick={() => setAdminTab('dashboard')} className={`inline-block p-4 rounded-t-lg border-b-2 ${adminTab === 'dashboard' ? 'text-red-600 border-red-600' : 'border-transparent hover:text-gray-600 hover:border-gray-300'}`}>Dashboard</button>
-                        </li>
-                        <li className="mr-2">
-                            <button onClick={() => setAdminTab('registrations')} className={`inline-block p-4 rounded-t-lg border-b-2 ${adminTab === 'registrations' ? 'text-red-600 border-red-600' : 'border-transparent hover:text-gray-600 hover:border-gray-300'}`}>Gerir Inscrições</button>
-                        </li>
-                        <li className="mr-2">
-                            <button onClick={() => setAdminTab('users')} className={`inline-block p-4 rounded-t-lg border-b-2 ${adminTab === 'users' ? 'text-red-600 border-red-600' : 'border-transparent hover:text-gray-600 hover:border-gray-300'}`}>Gerir Paroquianos</button>
-                        </li>
+                        <li className="mr-2"><button onClick={() => setAdminTab('dashboard')} className={`inline-block p-4 rounded-t-lg border-b-2 ${adminTab === 'dashboard' ? 'text-red-600 border-red-600' : 'border-transparent hover:text-gray-600 hover:border-gray-300'}`}>Dashboard</button></li>
+                        <li className="mr-2"><button onClick={() => setAdminTab('registrations')} className={`inline-block p-4 rounded-t-lg border-b-2 ${adminTab === 'registrations' ? 'text-red-600 border-red-600' : 'border-transparent hover:text-gray-600 hover:border-gray-300'}`}>Gerir Inscrições</button></li>
+                        <li className="mr-2"><button onClick={() => setAdminTab('users')} className={`inline-block p-4 rounded-t-lg border-b-2 ${adminTab === 'users' ? 'text-red-600 border-red-600' : 'border-transparent hover:text-gray-600 hover:border-gray-300'}`}>Gerir Paroquianos</button></li>
                     </ul>
                 </div>
 
@@ -247,7 +216,7 @@ export default function App() {
                                 <div className="bg-white p-4 rounded-lg shadow"><h4 className="text-sm font-semibold text-gray-500">Total de Paroquianos</h4><p className="text-3xl font-bold text-gray-800">{dashboardStats.total_users}</p></div>
                                 <div className="bg-white p-4 rounded-lg shadow"><h4 className="text-sm font-semibold text-gray-500">Total de Inscrições</h4><p className="text-3xl font-bold text-gray-800">{dashboardStats.total_registrations}</p></div>
                                 <div className="bg-white p-4 rounded-lg shadow"><h4 className="text-sm font-semibold text-gray-500">Total de Contribuições</h4><p className="text-3xl font-bold text-gray-800">{dashboardStats.total_contributions}</p></div>
-                                <div className="bg-white p-4 rounded-lg shadow"><h4 className="text-sm font-semibold text-gray-500">Valor Arrecadado (PIX)</h4><p className="text-3xl font-bold text-gray-800">R$ {dashboardStats.total_contribution_value?.toFixed(2) || '0.00'}</p></div>
+                                <div className="bg-white p-4 rounded-lg shadow"><h4 className="text-sm font-semibold text-gray-500">Valor Arrecadado (PIX)</h4><p className="text-3xl font-bold text-gray-800">R$ {typeof dashboardStats.total_contribution_value === 'number' ? dashboardStats.total_contribution_value.toFixed(2) : '0.00'}</p></div>
                             </div>
                         )}
                         <h3 className="text-xl sm:text-2xl font-semibold text-gray-700 mb-4">Inscrições por Serviço</h3>
@@ -317,7 +286,7 @@ export default function App() {
         </div>
       </footer>
 
-      {showAuthModal && (<div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-40" onClick={handleCloseModal}><div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md relative" onClick={e => e.stopPropagation()}><button onClick={handleCloseModal} className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-2xl">&times;</button>{isRegistering ? (<div><h2 className="text-2xl font-bold mb-6 text-center">Criar Conta</h2><form onSubmit={handleRegisterSubmit}><div className="mb-4"><label className="block text-gray-700 mb-2" htmlFor="name">Nome Completo</label><input className="w-full px-4 py-2 border rounded-lg" type="text" id="name" name="name" required /></div><div className="mb-4"><label className="block text-gray-700 mb-2" htmlFor="address">Endereço</label><input className="w-full px-4 py-2 border rounded-lg" type="text" id="address" name="address" required /></div><div className="mb-4"><label className="block text-gray-700 mb-2" htmlFor="dob">Data de Nascimento</label><input className="w-full px-4 py-2 border rounded-lg" type="date" id="dob" name="dob" required /></div><div className="mb-4"><label className="block text-gray-700 mb-2" htmlFor="gender">Género</label><select id="gender" name="gender" className="w-full px-4 py-2 border rounded-lg"><option value="Masculino">Masculino</option><option value="Feminino">Feminino</option></select></div><div className="mb-4"><label className="block text-gray-700 mb-2" htmlFor="email">E-mail</label><input className="w-full px-4 py-2 border rounded-lg" type="email" id="email" name="email" required /></div><div className="mb-6"><label className="block text-gray-700 mb-2" htmlFor="password">Senha</label><input className="w-full px-4 py-2 border rounded-lg" type="password" id="password" name="password" required /></div><button className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-full" type="submit">Registar</button></form><p className="text-center mt-4">Já tem uma conta? <button onClick={() => setIsRegistering(false)} className="text-blue-500 hover:underline">Faça o login</button></p></div>) : (<div><h2 className="text-2xl font-bold mb-6 text-center">Login</h2><form onSubmit={handleLoginSubmit}><div className="mb-4"><label className="block text-gray-700 mb-2" htmlFor="email">E-mail</label><input className="w-full px-4 py-2 border rounded-lg" type="email" id="email" name="email" required /></div><div className="mb-6"><label className="block text-gray-700 mb-2" htmlFor="password">Senha</label><input className="w-full px-4 py-2 border rounded-lg" type="password" id="password" name="password" required /></div><button className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full" type="submit">Entrar</button></form><p className="text-center mt-4">Não tem uma conta? <button onClick={() => setIsRegistering(true)} className="text-blue-500 hover:underline">Cadastre-se</button></p></div>)}</div></div>)}
+      {showAuthModal && (<div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-40" onClick={handleCloseModal}><div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md relative" onClick={e => e.stopPropagation()}><button onClick={handleCloseModal} className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-2xl">&times;</button>{isRegistering ? (<div><h2 className="text-2xl font-bold mb-6 text-center">Criar Conta</h2><form onSubmit={handleRegisterSubmit}><div className="mb-4"><label className="block text-gray-700 mb-2" htmlFor="name">Nome Completo</label><input className="w-full px-4 py-2 border rounded-lg" type="text" id="name" name="name" required /></div><div className="mb-4"><label className="block text-gray-700 mb-2" htmlFor="address">Endereço</label><input className="w-full px-4 py-2 border rounded-lg" type="text" id="address" name="address" required /></div><div className="mb-4"><label className="block text-gray-700 mb-2" htmlFor="dob">Data de Nascimento</label><input className="w-full px-4 py-2 border rounded-lg" type="date" id="dob" name="dob" required /></div><div className="mb-4"><label className="block text-gray-700 mb-2" htmlFor="gender">Género</label><select id="gender" name="gender" className="w-full px-4 py-2 border rounded-lg"><option value="Masculino">Masculino</option><option value="Feminino">Feminino</option></select></div><div className="mb-4"><label className="block text-gray-700 mb-2" htmlFor="email">E-mail</label><input className="w-full px-4 py-2 border rounded-lg" type="email" id="email" name="email" required /></div><div className="mb-6"><label className="block text-gray-700 mb-2" htmlFor="password">Senha</label><input className="w-full px-4 py-2 border rounded-lg" type="password" id="password" name="password" required /></div><button disabled={isSubmitting} className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-full flex justify-center items-center transition duration-300 disabled:bg-yellow-300" type="submit">{isSubmitting ? <SpinnerIcon className="animate-spin mr-2" /> : null}{isSubmitting ? 'A Registar...' : 'Registar'}</button></form><p className="text-center mt-4">Já tem uma conta? <button onClick={() => setIsRegistering(false)} className="text-blue-500 hover:underline">Faça o login</button></p></div>) : (<div><h2 className="text-2xl font-bold mb-6 text-center">Login</h2><form onSubmit={handleLoginSubmit}><div className="mb-4"><label className="block text-gray-700 mb-2" htmlFor="email">E-mail</label><input className="w-full px-4 py-2 border rounded-lg" type="email" id="email" name="email" required /></div><div className="mb-6"><label className="block text-gray-700 mb-2" htmlFor="password">Senha</label><input className="w-full px-4 py-2 border rounded-lg" type="password" id="password" name="password" required /></div><button disabled={isSubmitting} className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full flex justify-center items-center transition duration-300 disabled:bg-blue-300" type="submit">{isSubmitting ? <SpinnerIcon className="animate-spin mr-2" /> : null}{isSubmitting ? 'A Entrar...' : 'Entrar'}</button></form><p className="text-center mt-4">Não tem uma conta? <button onClick={() => setIsRegistering(true)} className="text-blue-500 hover:underline">Cadastre-se</button></p></div>)}</div></div>)}
       {showPixModal && (<div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-40" onClick={handleCloseModal}><div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm relative text-center" onClick={e => e.stopPropagation()}><button onClick={handleCloseModal} className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-2xl">&times;</button><h2 className="text-2xl font-bold mb-4">Contribuição via PIX</h2><p className="text-gray-600 mb-4">Leia o QR Code com a app do seu banco ou copie a chave abaixo.</p><div className="flex justify-center mb-4"><PixQrCodeIcon className="w-48 h-48" /></div><div className="bg-gray-100 p-3 rounded-lg"><p className="text-gray-600 text-sm">Chave PIX (E-mail - Exemplo):</p><p className="font-mono text-lg font-bold">chave.pix.da.paroquia@email.com</p></div><button onClick={copyPixKey} className="w-full mt-4 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-full transition duration-300">Copiar Chave</button></div></div>)}
       {showUserEditModal && editingUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-40" onClick={handleCloseModal}>
@@ -336,7 +305,10 @@ export default function App() {
                         <label htmlFor="isAdmin" className="ml-2 text-sm font-medium text-gray-900">Promover a Administrador</label>
                     </div>
                 </div>
-                <button className="w-full mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full" type="submit">Salvar Alterações</button>
+                <button disabled={isSubmitting} className="w-full mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full flex justify-center items-center transition duration-300 disabled:bg-blue-300" type="submit">
+                  {isSubmitting ? <SpinnerIcon className="animate-spin mr-2" /> : null}
+                  {isSubmitting ? 'A Salvar...' : 'Salvar Alterações'}
+                </button>
             </form>
           </div>
         </div>
