@@ -3,15 +3,22 @@ services:
     build: ./backend
     ports:
       - "8080:8080"
+    # A MUDANÇA CRUCIAL:
+    # Agora, o backend só arranca depois de o 'healthcheck' da base de dados passar.
     depends_on:
       db:
         condition: service_healthy
     restart: always
+    environment:
+      # Passamos o endereço da base de dados como uma variável de ambiente.
+      DATABASE_URL: "host=db user=user password=password dbname=paroquia_db port=5432 sslmode=disable"
+      GIN_MODE: "release"
+      JWT_KEY: "uma_chave_super_secreta_e_diferente_para_producao"
+      ADMIN_EMAIL: "jdkacesso@gmail.com" # Mantenha o seu e-mail de admin aqui
 
   frontend:
     build: ./frontend
     ports:
-      # Nginx serve na porta 80 por padrão. Mapeamos para 3000 para o Codespaces.
       - "3000:80" 
     depends_on:
       - backend
@@ -26,6 +33,8 @@ services:
       - POSTGRES_DB=paroquia_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    # A FERRAMENTA DE DIAGNÓSTICO:
+    # O Docker irá executar este comando para verificar se o PostgreSQL está pronto.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d paroquia_db"]
       interval: 10s

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -15,12 +16,10 @@ import (
 
 var db *gorm.DB
 var err error
-var jwtKey = []byte("sua_chave_secreta_super_segura")
+var jwtKey = []byte(os.Getenv("JWT_KEY"))
 
-// E-mail do administrador da plataforma
-const AdminEmail = "jdkacesso@gmail.com"
+var AdminEmail = os.Getenv("ADMIN_EMAIL")
 
-// Claims é a estrutura que será codificada no token JWT.
 type Claims struct {
 	UserID  uint `json:"user_id"`
 	IsAdmin bool `json:"isAdmin"`
@@ -28,11 +27,30 @@ type Claims struct {
 }
 
 func main() {
-	dsn := "host=db user=user password=password dbname=paroquia_db port=5432 sslmode=disable TimeZone=America/Sao_Paulo"
-	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		log.Fatal("Falha ao conectar ao banco de dados")
+	// A LÓGICA DE TENTATIVAS PARA PRODUÇÃO
+	var dsn string
+	if os.Getenv("DATABASE_URL") != "" {
+		dsn = os.Getenv("DATABASE_URL")
+	} else {
+		log.Println("Aviso: DATABASE_URL não definida, a usar valor padrão para desenvolvimento local.")
+		dsn = "host=db user=user password=password dbname=paroquia_db port=5432 sslmode=disable TimeZone=America/Sao_Paulo"
 	}
+	
+	// Tenta conectar-se à base de dados 5 vezes antes de desistir.
+	for i := 0; i < 5; i++ {
+		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+		if err == nil {
+			log.Println("Conexão com o banco de dados estabelecida com sucesso.")
+			break // Sai do loop se a conexão for bem-sucedida
+		}
+		log.Printf("Tentativa %d: Falha ao conectar ao banco de dados. Tentando novamente em 5 segundos...", i+1)
+		time.Sleep(5 * time.Second)
+	}
+
+	if err != nil {
+		log.Fatal("Não foi possível conectar ao banco de dados após várias tentativas:", err)
+	}
+
 
 	db.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &Registration{}, &LoginInput{}, &Contribution{}, &MassTime{})
 	seedDatabase()
@@ -86,6 +104,8 @@ func main() {
 	log.Printf("Servidor backend iniciado na porta %s", port)
 	router.Run(":" + port)
 }
+
+// ... (Resto do ficheiro continua igual) ...
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -174,4 +194,5 @@ func seedDatabase() {
 		db.Create(&massTimes)
 	}
 }
+
 
