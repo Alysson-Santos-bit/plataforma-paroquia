@@ -243,7 +243,6 @@ func UpdateRegistrationStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Status da inscrição atualizado com sucesso!"})
 }
 
-// GetDashboardStats calcula e retorna as estatísticas para o dashboard.
 func GetDashboardStats(c *gin.Context) {
 	var totalUsers int64
 	var totalRegistrations int64
@@ -263,5 +262,54 @@ func GetDashboardStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, stats)
+}
+
+// GetAllUsers busca todos os utilizadores (paroquianos).
+func GetAllUsers(c *gin.Context) {
+	var users []User
+	if err := db.Order("name asc").Find(&users).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar utilizadores."})
+		return
+	}
+	c.JSON(http.StatusOK, users)
+}
+
+// UpdateUser permite ao administrador atualizar os dados de um utilizador.
+func UpdateUser(c *gin.Context) {
+	userID := c.Param("id")
+	var user User
+	if err := db.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Utilizador não encontrado."})
+		return
+	}
+
+	var input struct {
+		Name    string `json:"name"`
+		Email   string `json:"email"`
+		Address string `json:"address"`
+		DOB     string `json:"dob"`
+		Gender  string `json:"gender"`
+		IsAdmin bool   `json:"isAdmin"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados de entrada inválidos."})
+		return
+	}
+
+	// Atualiza os campos
+	user.Name = input.Name
+	user.Email = input.Email
+	user.Address = input.Address
+	user.DOB = input.DOB
+	user.Gender = input.Gender
+	user.IsAdmin = input.IsAdmin
+
+	if err := db.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Falha ao atualizar o utilizador."})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Utilizador atualizado com sucesso!"})
 }
 

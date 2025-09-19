@@ -18,7 +18,8 @@ var err error
 var jwtKey = []byte("sua_chave_secreta_super_segura")
 
 // E-mail do administrador da plataforma
-const AdminEmail = "jdkacesso@gmail.com" // IMPORTANTE: Mude para o seu e-mail se for diferente
+// !! VERIFIQUE E ALTERE ESTE E-MAIL PARA O SEU !!
+const AdminEmail = "seu-email-admin@exemplo.com" 
 
 // Claims é a estrutura que será codificada no token JWT.
 type Claims struct {
@@ -38,8 +39,8 @@ func main() {
 	seedDatabase()
 
 	router := gin.Default()
-
-	// A CORREÇÃO DEFINITIVA: Configuração de CORS explícita e completa.
+	
+    // A CORREÇÃO DEFINITIVA: Configuração de CORS explícita e completa.
 	config := cors.Config{
 		AllowOrigins:     []string{"*"}, // Para desenvolvimento. Pode ser restringido depois.
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -49,6 +50,7 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}
 	router.Use(cors.New(config))
+
 
 	api := router.Group("/api")
 	{
@@ -80,6 +82,8 @@ func main() {
 		admin.GET("/registrations", GetAllRegistrations)
 		admin.PATCH("/registrations/:id", UpdateRegistrationStatus)
 		admin.GET("/stats", GetDashboardStats)
+		admin.GET("/users", GetAllUsers)
+		admin.PUT("/users/:id", UpdateUser)
 	}
 
 	log.Println("Servidor backend iniciado em http://localhost:8080")
@@ -176,5 +180,4 @@ func seedDatabase() {
 	}
 }
 
-    
 
