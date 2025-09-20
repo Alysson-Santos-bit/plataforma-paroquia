@@ -1,4 +1,4 @@
-	package main
+package main
 
 import (
 	"log"
@@ -49,17 +49,18 @@ func main() {
 		log.Fatal("Não foi possível conectar ao banco de dados:", err)
 	}
 
-	db.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &Registration{}, &Contribution{}, &MassTime{}, &LoginInput{})
+	db.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &Registration{}, &Contribution{}, &MassTime{})
 	seedDatabase()
 
 	router := gin.Default()
 	
+	// Configuração de CORS que lê a variável de ambiente para produção
 	config := cors.DefaultConfig()
 	allowedOrigin := os.Getenv("CORS_ALLOWED_ORIGIN")
 	if allowedOrigin != "" {
-		config.AllowOrigins = []string{allowedOrigin} 
+		config.AllowOrigins = []string{allowedOrigin} // Confia apenas no frontend do Render
 	} else {
-		config.AllowAllOrigins = true 
+		config.AllowAllOrigins = true // Permite tudo para desenvolvimento local
 	}
 	config.AllowHeaders = append(config.AllowHeaders, "Authorization")
 	router.Use(cors.New(config))
@@ -102,8 +103,8 @@ func main() {
 	log.Printf("Servidor backend iniciado na porta %s", port)
 	router.Run(":" + port)
 }
+// O resto do ficheiro (Middlewares, seedDatabase, etc.) continua igual
 
-// ... (Resto do ficheiro main.go que contém os middlewares e seedDatabase)
 
 
 
