@@ -95,31 +95,30 @@ type Claims struct {
 
 // --- Função Principal ---
 func main() {
-	// Carrega variáveis de ambiente do ficheiro .env (para desenvolvimento local)
 	godotenv.Load()
-
-	// Carrega as configurações das variáveis de ambiente
 	jwtKey = []byte(os.Getenv("JWT_SECRET_KEY"))
 	AdminEmail = os.Getenv("ADMIN_EMAIL")
 
 	ConnectDatabase()
 	db.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &MassTime{}, &Registration{}, &Contribution{})
-	// Popula a base de dados com dados iniciais se estiver vazia
 	seedDatabase()
 
 	router := gin.Default()
 
-	// --- ALTERAÇÃO PARA TESTE DE CORS ---
-	// Temporariamente, vamos permitir todas as origens para diagnosticar o problema.
 	config := cors.DefaultConfig()
-	config.AllowAllOrigins = true // FORÇADO PARA TESTE
+	// Mantenha esta configuração aberta por agora para garantir que não há problemas de CORS.
+	// Depois de tudo funcionar, podemos voltar a restringi-la.
+	config.AllowAllOrigins = true
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"}
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Authorization"}
 	router.Use(cors.New(config))
-	// --- FIM DA ALTERAÇÃO ---
 
 	api := router.Group("/api")
 	{
+		// --- NOVA ROTA DE HEALTH CHECK ---
+		// Esta rota responde à Render para dizer que o serviço está a funcionar.
+		api.GET("/health", HealthCheckHandler)
+
 		// Rotas Públicas
 		api.POST("/register", RegisterUser)
 		api.POST("/login", LoginUser)
@@ -159,6 +158,11 @@ func main() {
 }
 
 // --- Handlers (Lógica das Rotas) ---
+
+// --- NOVO HANDLER PARA O HEALTH CHECK ---
+func HealthCheckHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"status": "UP"})
+}
 
 func RegisterUser(c *gin.Context) {
 	var input RegisterInput
