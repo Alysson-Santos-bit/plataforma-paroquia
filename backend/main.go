@@ -4,21 +4,86 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
+// --- Variáveis Globais ---
 var db *gorm.DB
-var err error
-var jwtKey []byte
-var AdminEmail string
+var jwtKey = []byte(os.Getenv("JWT_SECRET_KEY")) // Carrega a chave secreta da variável de ambiente
+var AdminEmail = os.Getenv("ADMIN_EMAIL")       // Carrega o e-mail do admin da variável de ambiente
+
+// --- Estruturas (Models) ---
+// Modelos da Base de Dados atualizados conforme a sua especificação.
+
+// User representa um paroquiano registado na plataforma.
+type User struct {
+	gorm.Model
+	Name     string `json:"name"`
+	Email    string `json:"email" gorm:"unique"`
+	Password string `json:"-" gorm:"size:255"`
+	Address  string `json:"address"`
+	DOB      string `json:"dob"` // Data de Nascimento
+	Gender   string `json:"gender"`
+	IsAdmin  bool   `json:"isAdmin" gorm:"default:false"`
+}
+
+// Service representa um serviço ou sacramento oferecido pela paróquia.
+type Service struct {
+	gorm.Model
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+// Pastoral representa uma pastoral ou movimento da paróquia.
+type Pastoral struct {
+	gorm.Model
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	MeetingInfo string `json:"meeting_info"`
+}
+
+// MassTime representa um horário de missa
+type MassTime struct {
+	gorm.Model
+	Day         string `json:"day"`
+	Time        string `json:"time"`
+	Location    string `json:"location"`
+	Description string `json:"description"`
+}
+
+// Registration representa a inscrição de um utilizador num serviço.
+type Registration struct {
+	gorm.Model
+	UserID    uint    `json:"user_id"`
+	ServiceID uint    `json:"service_id"`
+	Status    string  `json:"status"`
+	Service   Service `json:"service" gorm:"foreignKey:ServiceID"`
+	User      User    `json:"user" gorm:"foreignKey:UserID"`
+}
+
+// Contribution representa uma contribuição do dízimo.
+type Contribution struct {
+	gorm.Model
+	UserID uint    `json:"user_id"`
+	User   User    `json:"user"`
+	Value  float64 `json:"value"`
+	Method string  `json:"method"`
+	Status string  `json:"status"`
+}
+
+// --- Estruturas para Autenticação ---
+
+// LoginInput define a estrutura para os dados de entrada do login.
+type LoginInput struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+}
 
 type Claims struct {
 	UserID  uint `json:"user_id"`
@@ -26,84 +91,142 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+// --- Função Principal ---
 func main() {
-	godotenv.Load() 
-
-	jwtKey = []byte(os.Getenv("JWT_KEY"))
-	AdminEmail = os.Getenv("ADMIN_EMAIL")
-	dsn := os.Getenv("DATABASE_URL")
-
-	if dsn == "" {
-		log.Fatal("Erro: DATABASE_URL não está definida.")
-	}
-	
-	for i := 0; i < 5; i++ {
-		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
-		if err == nil {
-			break
-		}
-		log.Printf("Tentativa %d: Falha ao conectar. Tentando novamente em 5s...", i+1)
-		time.Sleep(5 * time.Second)
-	}
-	if err != nil {
-		log.Fatal("Não foi possível conectar ao banco de dados:", err)
-	}
-
-	db.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &Registration{}, &Contribution{}, &MassTime{})
-	seedDatabase()
+	// Conecta-se à base de dados
+	ConnectDatabase()
+	// Migra as tabelas da base de dados, adicionando as novas colunas se necessário
+	db.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &MassTime{}, &Registration{}, &Contribution{})
 
 	router := gin.Default()
-	
-	// Configuração de CORS que lê a variável de ambiente para produção
+
+	// --- CONFIGURAÇÃO DO CORS ---
 	config := cors.DefaultConfig()
-	allowedOrigin := os.Getenv("CORS_ALLOWED_ORIGIN")
-	if allowedOrigin != "" {
-		config.AllowOrigins = []string{allowedOrigin} // Confia apenas no frontend do Render
-	} else {
-		config.AllowAllOrigins = true // Permite tudo para desenvolvimento local
+	// Em produção, é mais seguro especificar o domínio do seu frontend.
+	config.AllowOrigins = []string{os.Getenv("CORS_ALLOWED_ORIGIN"), "http://localhost:3000"}
+	if os.Getenv("CORS_ALLOWED_ORIGIN") == "" {
+		config.AllowAllOrigins = true
 	}
-	config.AllowHeaders = append(config.AllowHeaders, "Authorization")
+	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"}
+	config.AllowHeaders = []string{"Origin", "Content-Type", "Authorization"}
+
+	// Aplica o middleware de CORS a todas as rotas
 	router.Use(cors.New(config))
 
+	// Agrupa as rotas da API sob o prefixo /api
 	api := router.Group("/api")
 	{
+		// Rotas Públicas (não precisam de login)
 		api.POST("/register", RegisterUser)
 		api.POST("/login", LoginUser)
 		api.GET("/parish-info", GetParishInfo)
 		api.GET("/services", GetServices)
 		api.GET("/pastorais", GetPastorais)
 		api.GET("/mass-times", GetMassTimes)
-	}
-	
-	protected := api.Group("/")
-	protected.Use(AuthMiddleware())
-	{
-		protected.POST("/registrations", CreateRegistration)
-		protected.GET("/my-registrations", GetMyRegistrations)
-		protected.POST("/contributions", CreateContribution)
-		protected.GET("/my-contributions", GetMyContributions)
+
+		// Rotas Autenticadas (precisam de login de utilizador normal)
+		authenticated := api.Group("/")
+		authenticated.Use(AuthMiddleware()) // Aplica o middleware de autenticação
+		{
+			authenticated.POST("/registrations", CreateRegistration)
+			authenticated.GET("/my-registrations", GetMyRegistrations)
+			authenticated.POST("/contributions", CreateContribution)
+			authenticated.GET("/my-contributions", GetMyContributions)
+		}
+
+		// Rotas de Administração (precisam de login de admin)
+		admin := api.Group("/admin")
+		admin.Use(AuthMiddleware(), AdminMiddleware()) // Aplica ambos os middlewares
+		{
+			admin.GET("/dashboard-stats", GetDashboardStats)
+			admin.GET("/registrations", GetAllRegistrations)
+			// A rota para atualizar o status deve ser PATCH ou PUT
+			admin.PATCH("/registrations/:id", UpdateRegistrationStatus)
+			admin.GET("/users", GetAllUsers)
+			admin.PUT("/users/:id", UpdateUser)
+		}
 	}
 
-	admin := api.Group("/admin")
-	admin.Use(AuthMiddleware())
-	admin.Use(AdminMiddleware())
-	{
-		admin.GET("/registrations", GetAllRegistrations)
-		admin.PATCH("/registrations/:id", UpdateRegistrationStatus)
-		admin.GET("/stats", GetDashboardStats)
-		admin.GET("/users", GetAllUsers)
-		admin.PUT("/users/:id", UpdateUser)
-	}
-
+	// Inicia o servidor na porta 10000, conforme detectado nos logs da Render
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		port = "10000"
 	}
-
 	log.Printf("Servidor backend iniciado na porta %s", port)
 	router.Run(":" + port)
 }
-// O resto do ficheiro (Middlewares, seedDatabase, etc.) continua igual
+
+// --- Funções de Suporte ---
+
+// ConnectDatabase inicializa a conexão com a base de dados PostgreSQL
+func ConnectDatabase() {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		log.Fatal("DATABASE_URL não definida")
+	}
+
+	var err error
+	// Adiciona lógica de retentativa para a conexão com o banco de dados
+	for i := 0; i < 5; i++ {
+		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+		if err == nil {
+			log.Println("Conexão com a base de dados estabelecida com sucesso.")
+			return
+		}
+		log.Printf("Tentativa %d: Falha ao conectar. Tentando novamente em 5s...", i+1)
+		time.Sleep(5 * time.Second)
+	}
+
+	log.Fatalf("Não foi possível conectar ao banco de dados após várias tentativas: %v", err)
+}
+
+// AuthMiddleware verifica o token JWT
+func AuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		tokenString := c.GetHeader("Authorization")
+		if tokenString == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token de autorização não fornecido"})
+			c.Abort()
+			return
+		}
+		// O token geralmente vem no formato "Bearer <token>", então removemos o prefixo.
+		if len(tokenString) > 7 && tokenString[:7] == "Bearer " {
+			tokenString = tokenString[7:]
+		}
+
+		claims := &Claims{}
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+			return jwtKey, nil
+		})
+
+		if err != nil || !token.Valid {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token inválido"})
+			c.Abort()
+			return
+		}
+
+		// Adiciona o ID do utilizador e o status de admin ao contexto para uso posterior nos handlers
+		c.Set("userID", claims.UserID)
+		c.Set("isAdmin", claims.IsAdmin)
+
+		c.Next()
+	}
+}
+
+// AdminMiddleware verifica se o utilizador é um administrador
+func AdminMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		isAdmin, exists := c.Get("isAdmin")
+		if !exists || !isAdmin.(bool) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Acesso negado. Requer privilégios de administrador."})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+
 
 
 
