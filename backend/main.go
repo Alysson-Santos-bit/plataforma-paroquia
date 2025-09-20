@@ -159,6 +159,39 @@ func HealthCheckHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "UP"})
 }
 
+// --- HANDLERS DE DADOS PÚBLICOS COM DIAGNÓSTICO ---
+func GetServices(c *gin.Context) {
+	log.Println("[DIAGNÓSTICO] Handler GetServices foi chamado.")
+	var services []Service
+	result := db.Find(&services)
+
+	if result.Error != nil {
+		log.Printf("[DIAGNÓSTICO] ERRO ao buscar serviços: %v", result.Error)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar serviços"})
+		return
+	}
+
+	log.Printf("[DIAGNÓSTICO] Consulta de serviços encontrou %d registos.", result.RowsAffected)
+	c.JSON(http.StatusOK, services)
+}
+
+func GetMassTimes(c *gin.Context) {
+	log.Println("[DIAGNÓSTICO] Handler GetMassTimes foi chamado.")
+	var massTimes []MassTime
+	result := db.Order("location, id").Find(&massTimes)
+
+	if result.Error != nil {
+		log.Printf("[DIAGNÓSTICO] ERRO ao buscar horários de missa: %v", result.Error)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar horários de missa"})
+		return
+	}
+
+	log.Printf("[DIAGNÓSTICO] Consulta de horários de missa encontrou %d registos.", result.RowsAffected)
+	c.JSON(http.StatusOK, massTimes)
+}
+// --- FIM DOS HANDLERS DE DIAGNÓSTICO ---
+
+
 func RegisterUser(c *gin.Context) {
 	var input RegisterInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -220,22 +253,10 @@ func GetParishInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, info)
 }
 
-func GetServices(c *gin.Context) {
-	var services []Service
-	db.Find(&services)
-	c.JSON(http.StatusOK, services)
-}
-
 func GetPastorais(c *gin.Context) {
 	var pastorals []Pastoral
 	db.Find(&pastorals)
 	c.JSON(http.StatusOK, pastorals)
-}
-
-func GetMassTimes(c *gin.Context) {
-	var massTimes []MassTime
-	db.Order("location, id").Find(&massTimes)
-	c.JSON(http.StatusOK, massTimes)
 }
 
 func CreateRegistration(c *gin.Context) {
@@ -395,7 +416,6 @@ func seedDatabase() {
 		{Name: "Curso de Noivos", Description: "Curso preparatório obrigatório para casais que desejam se casar na igreja."},
 	}
 	for _, service := range services {
-		// Tenta encontrar o serviço pelo nome. Se não encontrar, cria.
 		db.FirstOrCreate(&service, Service{Name: service.Name})
 	}
 	log.Println("Seeding de serviços concluído.")
@@ -418,7 +438,6 @@ func seedDatabase() {
 		{Day: "Domingo", Time: "9h", Location: "Capela São Carlos"},
 	}
 	for _, mt := range massTimes {
-		// Tenta encontrar pelo conjunto de dia, hora e local. Se não encontrar, cria.
 		db.FirstOrCreate(&mt, MassTime{Day: mt.Day, Time: mt.Time, Location: mt.Location})
 	}
 	log.Println("Seeding de horários de missa concluído.")
