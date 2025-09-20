@@ -28,11 +28,13 @@ type Claims struct {
 }
 
 func main() {
+	// Carrega as variáveis do ficheiro .env no início.
 	err := godotenv.Load()
 	if err != nil {
 		log.Println("Aviso: Não foi possível carregar o ficheiro .env. A usar variáveis de ambiente do sistema.")
 	}
 
+	// Agora, as variáveis são lidas do ambiente (que foi populado pelo .env)
 	jwtKey = []byte(os.Getenv("JWT_KEY"))
 	AdminEmail = os.Getenv("ADMIN_EMAIL")
 	dsn := os.Getenv("DATABASE_URL")
@@ -40,25 +42,28 @@ func main() {
 	if dsn == "" {
 		log.Fatal("Erro: DATABASE_URL não está definida.")
 	}
-	
+
+	// Tenta conectar-se à base de dados com várias tentativas
 	for i := 0; i < 5; i++ {
 		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 		if err == nil {
 			log.Println("Conexão com o banco de dados estabelecida com sucesso.")
-			break
+			break // Sai do loop se a conexão for bem-sucedida
 		}
-		log.Printf("Tentativa %d: Falha ao conectar. Tentando novamente em 5s...", i+1)
+		log.Printf("Tentativa %d: Falha ao conectar ao banco de dados. Tentando novamente em 5 segundos...", i+1)
 		time.Sleep(5 * time.Second)
 	}
+
 	if err != nil {
-		log.Fatal("Não foi possível conectar ao banco de dados:", err)
+		log.Fatal("Não foi possível conectar ao banco de dados após várias tentativas:", err)
 	}
 
-	db.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &Registration{}, &Contribution{}, &MassTime{})
+
+	db.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &Registration{}, &LoginInput{}, &Contribution{}, &MassTime{})
 	seedDatabase()
 
 	router := gin.Default()
-	
+
 	config := cors.DefaultConfig()
 	config.AllowAllOrigins = true
 	config.AllowHeaders = append(config.AllowHeaders, "Authorization")
@@ -73,7 +78,7 @@ func main() {
 		api.GET("/pastorais", GetPastorais)
 		api.GET("/mass-times", GetMassTimes)
 	}
-	
+
 	router.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "pong"})
 	})
@@ -87,6 +92,7 @@ func main() {
 		protected.GET("/my-contributions", GetMyContributions)
 	}
 
+	// Grupo de rotas apenas para administradores
 	admin := api.Group("/admin")
 	admin.Use(AuthMiddleware())
 	admin.Use(AdminMiddleware())
@@ -116,16 +122,19 @@ func AuthMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		claims := &Claims{}
 		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 			return jwtKey, nil
 		})
+
 		if err != nil || !token.Valid {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token inválido ou expirado"})
 			c.Abort()
 			return
 		}
+
 		c.Set("userID", claims.UserID)
 		c.Set("isAdmin", claims.IsAdmin)
 		c.Next()
