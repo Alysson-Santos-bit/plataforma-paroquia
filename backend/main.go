@@ -47,12 +47,11 @@ func main() {
 			log.Println("Conexão com o banco de dados estabelecida com sucesso.")
 			break
 		}
-		log.Printf("Tentativa %d: Falha ao conectar ao banco de dados. Tentando novamente em 5 segundos...", i+1)
+		log.Printf("Tentativa %d: Falha ao conectar. Tentando novamente em 5s...", i+1)
 		time.Sleep(5 * time.Second)
 	}
-
 	if err != nil {
-		log.Fatal("Não foi possível conectar ao banco de dados após várias tentativas:", err)
+		log.Fatal("Não foi possível conectar ao banco de dados:", err)
 	}
 
 	db.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &Registration{}, &Contribution{}, &MassTime{})
