@@ -109,16 +109,14 @@ func main() {
 
 	router := gin.Default()
 
+	// --- ALTERAÇÃO PARA TESTE DE CORS ---
+	// Temporariamente, vamos permitir todas as origens para diagnosticar o problema.
 	config := cors.DefaultConfig()
-	allowedOrigin := os.Getenv("CORS_ALLOWED_ORIGIN")
-	if allowedOrigin != "" {
-		config.AllowOrigins = []string{allowedOrigin, "http://localhost:3000"}
-	} else {
-		config.AllowAllOrigins = true
-	}
+	config.AllowAllOrigins = true // FORÇADO PARA TESTE
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"}
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Authorization"}
 	router.Use(cors.New(config))
+	// --- FIM DA ALTERAÇÃO ---
 
 	api := router.Group("/api")
 	{
