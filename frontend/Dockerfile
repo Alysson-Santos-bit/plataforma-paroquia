@@ -22,9 +22,11 @@ FROM nginx:1.25-alpine
 #Copia os ficheiros estáticos compilados do estágio de 'build' para o diretório do Nginx
 COPY --from=build /app/build /usr/share/nginx/html
 
-#Copia o nosso ficheiro de configuração personalizado do Nginx para dentro do contentor
-#Este ficheiro DEVE estar na mesma pasta que este Dockerfile
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+#--- ALTERAÇÃO IMPORTANTE AQUI ---
+#Copia o nosso ficheiro de configuração para a pasta de templates do Nginx.
+#O script de arranque do Nginx irá processar este ficheiro, substituir as variáveis de ambiente,
+#e colocar o resultado final em /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 
 #Expõe a porta 80 para permitir o tráfego de entrada
 EXPOSE 80
