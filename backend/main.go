@@ -95,24 +95,18 @@ type Claims struct {
 
 // --- Função Principal ---
 func main() {
-	// Carrega variáveis de ambiente do ficheiro .env (apenas para desenvolvimento local)
 	godotenv.Load()
-
-	// Carrega as configurações das variáveis de ambiente
 	jwtKey = []byte(os.Getenv("JWT_SECRET_KEY"))
 	AdminEmail = os.Getenv("ADMIN_EMAIL")
 
 	ConnectDatabase()
 	db.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &MassTime{}, &Registration{}, &Contribution{})
-	seedDatabase()
+	seedDatabase() // A chamada para a função de seeding
 
 	router := gin.Default()
 
 	// --- CONFIGURAÇÃO DE CORS ROBUSTA PARA PRODUÇÃO ---
-	// Esta configuração é mais explícita e segura.
 	config := cors.Config{
-		// Lê a variável de ambiente para permitir pedidos apenas do seu frontend.
-		// Garanta que a variável CORS_ALLOWED_ORIGIN está definida como https://plataforma-paroquia-1.onrender.com
 		AllowOrigins:     []string{os.Getenv("CORS_ALLOWED_ORIGIN")},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
@@ -121,12 +115,12 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}
 	router.Use(cors.New(config))
-	// --- FIM DA CONFIGURAÇÃO DE CORS ---
 
 	api := router.Group("/api")
 	{
 		api.GET("/health", HealthCheckHandler)
 		api.POST("/register", RegisterUser)
+		// ... (o resto das suas rotas continua igual)
 		api.POST("/login", LoginUser)
 		api.GET("/parish-info", GetParishInfo)
 		api.GET("/services", GetServices)
@@ -167,6 +161,7 @@ func HealthCheckHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "UP"})
 }
 
+// ... (todas as suas outras funções de handler, como RegisterUser, LoginUser, etc., continuam aqui)
 func RegisterUser(c *gin.Context) {
 	var input RegisterInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -450,7 +445,6 @@ func UpdateUser(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Utilizador atualizado com sucesso!"})
 }
-
 // --- Funções de Suporte (Middlewares e Conexão com DB) ---
 
 func ConnectDatabase() {
@@ -512,10 +506,15 @@ func AdminMiddleware() gin.HandlerFunc {
 	}
 }
 
+// --- Função de Seeding com LOGS DE DIAGNÓSTICO ---
 func seedDatabase() {
+	log.Println("A verificar o estado do 'seed' da base de dados...")
 	var count int64
+
+	// Seed Services
 	db.Model(&Service{}).Count(&count)
 	if count == 0 {
+		log.Println("A tabela de Serviços está vazia. A semear os serviços...")
 		services := []Service{
 			{Name: "Batismo - Curso de Pais e Padrinhos", Description: "Inscrição para o curso preparatório para o batismo de crianças."},
 			{Name: "Catequese Infantil", Description: "Inscrições para a catequese para crianças e pré-adolescentes."},
@@ -526,41 +525,54 @@ func seedDatabase() {
 			{Name: "Crisma", Description: "Sacramento da confirmação para jovens e adultos."},
 			{Name: "Primeira Eucaristia", Description: "Preparação para receber o sacramento da Eucaristia pela primeira vez."},
 		}
-		db.Create(&services)
+		if err := db.Create(&services).Error; err != nil {
+			log.Printf("ERRO ao semear os serviços: %v\n", err)
+		} else {
+			log.Println("Serviços semeados com sucesso.")
+		}
+	} else {
+		log.Println("A tabela de Serviços já contém dados. A ignorar o 'seed'.")
 	}
 
+	// Seed Pastorals
 	db.Model(&Pastoral{}).Count(&count)
 	if count == 0 {
+		log.Println("A tabela de Pastorais está vazia. A semear as pastorais...")
 		pastorals := []Pastoral{
 			{Name: "Pastoral da Criança", Description: "Acompanhamento de crianças carentes e suas famílias.", MeetingInfo: "Sábados, às 14h, no Salão Paroquial."},
 			{Name: "Pastoral do Dízimo", Description: "Conscientização sobre a importância da contribuição para a comunidade.", MeetingInfo: "Primeira terça-feira do mês, às 19h30."},
 			{Name: "Pastoral Familiar", Description: "Apoio e formação para as famílias da comunidade.", MeetingInfo: "Último domingo do mês, após a missa das 10h."},
 			{Name: "Grupo de Jovens", Description: "Encontros de oração, formação e convivência para a juventude.", MeetingInfo: "Sextas-feiras, às 20h, na sala 5."},
 		}
-		db.Create(&pastorals)
+		if err := db.Create(&pastorals).Error; err != nil {
+			log.Printf("ERRO ao semear as pastorais: %v\n", err)
+		} else {
+			log.Println("Pastorais semeadas com sucesso.")
+		}
+	} else {
+		log.Println("A tabela de Pastorais já contém dados. A ignorar o 'seed'.")
 	}
 
+	// Seed Mass Times
 	db.Model(&MassTime{}).Count(&count)
 	if count == 0 {
+		log.Println("A tabela de Horários de Missa está vazia. A semear os horários...")
 		massTimes := []MassTime{
 			{Day: "Segunda e Quarta", Time: "19h30", Location: "Igreja Matriz", Description: "Novena N. Sra. Perpétuo Socorro"},
 			{Day: "Quinta-feira", Time: "12h", Location: "Igreja Matriz", Description: "Exposição do Santíssimo"},
-			{Day: "Quinta-feira", Time: "16h", Location: "Igreja Matriz", Description: ""},
-			{Day: "Sexta-feira", Time: "16h", Location: "Igreja Matriz", Description: ""},
-			{Day: "Sábado", Time: "16h", Location: "Igreja Matriz", Description: ""},
 			{Day: "Domingo", Time: "7h", Location: "Igreja Matriz", Description: ""},
 			{Day: "Domingo", Time: "10h30", Location: "Igreja Matriz", Description: ""},
 			{Day: "Domingo", Time: "19h30", Location: "Igreja Matriz", Description: ""},
-			{Day: "Quarta-feira", Time: "19h30", Location: "Capela São Carlos (Rua Piratininga, 1111)", Description: ""},
 			{Day: "Domingo", Time: "9h", Location: "Capela São Carlos (Rua Piratininga, 1111)", Description: ""},
-			{Day: "Domingo", Time: "9h", Location: "Capela São Vicente (Rua Catanduva, 489)", Description: ""},
-			{Day: "Quinta-feira", Time: "19h30", Location: "Capela Nossa Senhora Aparecida (Rua dos Crisântemos, 68)", Description: ""},
-			{Day: "Sábado", Time: "19h30", Location: "Capela Nossa Senhora Aparecida (Rua dos Crisântemos, 68)", Description: ""},
-			{Day: "Sábado", Time: "17h", Location: "Capela Nossa Senhora de Lourdes (Rua 7 de setembro, 1128)", Description: ""},
-			{Day: "Segunda-feira", Time: "16h", Location: "Cemitério da Saudade (Av. da Saudade, 700)", Description: ""},
-			{Day: "4º Domingo do Mês", Time: "10h30", Location: "Círculo Católico Estrela da Manhã (R. Araraquara, 95)", Description: ""},
 		}
-		db.Create(&massTimes)
+		if err := db.Create(&massTimes).Error; err != nil {
+			log.Printf("ERRO ao semear os horários de missa: %v\n", err)
+		} else {
+			log.Println("Horários de missa semeados com sucesso.")
+		}
+	} else {
+		log.Println("A tabela de Horários de Missa já contém dados. A ignorar o 'seed'.")
 	}
+	log.Println("Verificação do 'seed' da base de dados terminada.")
 }
 
