@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 // Constante para a URL base da sua API
-const API_BASE_URL = ''; // Deixe em branco se o frontend e o backend estiverem no mesmo domínio
+const API_BASE_URL = 'http://localhost:8080'; // Deixe em branco se o frontend e o backend estiverem no mesmo domínio
 
 // --- Ícones SVG para a UI ---
 const HomeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;

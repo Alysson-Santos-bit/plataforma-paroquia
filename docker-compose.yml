@@ -1,40 +1,55 @@
+version: '3.8'
+
 services:
-  backend:
-    build: ./backend
-    ports:
-      - "8080:8080"
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: always
 
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:80" 
-    depends_on:
-      - backend
-    restart: always
-    # A CORREÇÃO CRUCIAL:
-    # Passamos a URL pública do backend (do seu Codespaces) para o React.
-    environment:
-      - REACT_APP_API_BASE_URL=https://glorious-palm-tree-g4p549q76rqg29q96-8080.app.github.dev
+--- Serviço de Frontend (React + Nginx) ---
+frontend:
+# O nome deste serviço é 'frontend'
+container_name: parish_frontend
+# Constrói a imagem a partir do Dockerfile na pasta atual (ou ./frontend se estiver separado)
+build:
+context: . # ou ./frontend
+dockerfile: frontend.Dockerfile
+ports:
+# Mapeia a porta 80 do seu computador para a porta 80 do contentor
+- "80:80"
+# Garante que o frontend só arranca depois do backend estar pronto
+depends_on:
+- backend
 
-  db:
-    image: postgres:14-alpine
-    restart: always
-    environment:
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=paroquia_db
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d paroquia_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+--- Serviço de Backend (Aplicação Go) ---
+backend:
+# O nome deste serviço é 'backend', que corresponde ao 'proxy_pass' no nginx.conf
+container_name: parish_backend
+build:
+context: ./backend # Assumindo que o seu código Go está numa pasta 'backend'
+dockerfile: backend.Dockerfile # Você precisará de um Dockerfile para o Go
+ports:
+# Expõe a porta 8080 para que o Nginx possa comunicar com ela
+- "8080:8080"
+# Garante que o backend só arranca depois da base de dados estar pronta
+depends_on:
+- db
+# Variáveis de ambiente, como as credenciais da base de dados
+environment:
+- DB_USER=user
+- DB_PASSWORD=password
+- DB_NAME=parishdb
+- DB_HOST=db
+
+--- Serviço da Base de Dados (Exemplo com Postgres) ---
+db:
+image: postgres:15-alpine
+container_name: parish_db
+environment:
+- POSTGRES_USER=user
+- POSTGRES_PASSWORD=password
+- POSTGRES_DB=parishdb
+volumes:
+- postgres_data:/var/lib/postgresql/data
+ports:
+# Mapeia a porta 5432 do seu computador para a base de dados, para debugging
+- "5432:5432"
 
 volumes:
-  postgres_data:
-
+postgres_data:
