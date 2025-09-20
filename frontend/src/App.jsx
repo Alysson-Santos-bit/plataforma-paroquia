@@ -170,18 +170,29 @@ const HomePage = ({ token }) => {
 
     useEffect(() => {
         const loadData = async () => {
+            console.log("[DIAGNÓSTICO FRONTEND] A iniciar o carregamento dos dados...");
             try {
-                const [info, massTimes, services, pastorais] = await Promise.all([
+                const massTimes = await apiService.getMassTimes();
+                console.log("[DIAGNÓSTICO FRONTEND] Horários de missa recebidos:", massTimes);
+
+                const services = await apiService.getServices();
+                console.log("[DIAGNÓSTICO FRONTEND] Serviços recebidos:", services);
+                
+                const [info, pastorais] = await Promise.all([
                     apiService.getParishInfo(),
-                    apiService.getMassTimes(),
-                    apiService.getServices(),
                     apiService.getPastorais()
                 ]);
+                 console.log("[DIAGNÓSTICO FRONTEND] Informações e pastorais recebidas.");
+
                 setData({ info, massTimes: massTimes || [], services: services || [], pastorais: pastorais || [] });
+                console.log("[DIAGNÓSTICO FRONTEND] Estado 'data' atualizado.");
+
             } catch (err) {
+                console.error("[DIAGNÓSTICO FRONTEND] Erro ao carregar dados:", err);
                 setError('Não foi possível carregar as informações da paróquia.');
             } finally {
                 setLoading(false);
+                console.log("[DIAGNÓSTICO FRONTEND] Carregamento terminado.");
             }
         };
         loadData();
@@ -195,7 +206,6 @@ const HomePage = ({ token }) => {
         } catch (err) {
             setMessage(err.message || "Erro ao inscrever-se.");
         }
-        // Auto-hide message after 5 seconds
         setTimeout(() => setMessage(''), 5000);
     };
 
@@ -215,7 +225,7 @@ const HomePage = ({ token }) => {
                 <div className="bg-white p-6 rounded-lg shadow-lg">
                     <h2 className="text-2xl font-semibold mb-4 text-gray-700">Horários das Missas</h2>
                     <div className="space-y-3">
-                        {data.massTimes.length > 0 ? data.massTimes.map(mt => (
+                        {data.massTimes && data.massTimes.length > 0 ? data.massTimes.map(mt => (
                             <div key={mt.ID} className="border-b pb-2">
                                 <p className="font-bold text-lg">{mt.location}</p>
                                 <p className="text-gray-800">{mt.Day}: <span className="font-semibold">{mt.Time}</span></p>
@@ -227,7 +237,7 @@ const HomePage = ({ token }) => {
                 <div className="bg-white p-6 rounded-lg shadow-lg">
                     <h2 className="text-2xl font-semibold mb-4 text-gray-700">Serviços da Paróquia</h2>
                     <div className="space-y-3">
-                        {data.services.length > 0 ? data.services.map(s => (
+                        {data.services && data.services.length > 0 ? data.services.map(s => (
                             <div key={s.ID} className="border-b pb-2">
                                 <h3 className="font-bold">{s.Name}</h3>
                                 <p className="text-sm text-gray-600 mb-2">{s.Description}</p>
@@ -265,7 +275,6 @@ const MyProfilePage = ({ token }) => {
         fetchData();
     }, [fetchData]);
     
-    // Simulação de doação
     const handleDonate = async () => {
         const amount = prompt("Digite o valor da doação (ex: 10.50):");
         if (amount && !isNaN(parseFloat(amount))) {
@@ -275,7 +284,7 @@ const MyProfilePage = ({ token }) => {
             try {
                 const response = await apiService.createContribution({ value: parseFloat(amount), method: 'PIX' }, token);
                 setMessage(response.message);
-                fetchData(); // Atualiza a lista de doações
+                fetchData(); 
             } catch (err) {
                 setMessage(err.message || 'Erro ao registar doação.');
             }
