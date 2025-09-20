@@ -1,8 +1,11 @@
 import React from 'react';
-// CORREÇÃO: Voltando a usar os URLs do CDN do Firebase para tentar contornar o erro "Module not found".
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+// CORREÇÃO: Revertendo para os imports padrão do Firebase. 
+// Esta é a forma correta para o processo de build (npm run build).
+// O erro de deploy "Module not found" indica que a dependência do Firebase
+// precisa ser instalada no ambiente de deploy antes de executar o build.
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
+import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, doc, setDoc, getDoc } from 'firebase/firestore';
 
 
 // Shim para 'process' para evitar erros de tempo de execução em ambientes de navegador
