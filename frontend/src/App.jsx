@@ -1,8 +1,9 @@
 import React from 'react';
-// CORREÇÃO: Revertido para os imports padrão de pacotes do Firebase para corrigir o erro de build.
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
-import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, doc, setDoc, getDoc } from 'firebase/firestore';
+// CORREÇÃO: Voltando a usar os URLs do CDN do Firebase para tentar contornar o erro "Module not found".
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
 
 // Shim para 'process' para evitar erros de tempo de execução em ambientes de navegador
 window.process = typeof process === 'undefined' ? { env: {} } : process;
@@ -41,7 +42,7 @@ const generateFunnyName = () => {
 
 // Ícone SVG para Enviar Mensagem
 const SendIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
         <path d="M22 2L11 13" />
         <path d="M22 2L15 22L11 13L2 9L22 2Z" />
     </svg>
