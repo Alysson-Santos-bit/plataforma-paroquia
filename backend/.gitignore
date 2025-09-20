@@ -1,0 +1,3 @@
+Ignora o ficheiro de variáveis de ambiente locais.
+Este é o ficheiro mais importante a ser ignorado para a segurança do projeto.
+.env

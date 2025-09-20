@@ -10,16 +10,17 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 var db *gorm.DB
 var err error
-var jwtKey = []byte(os.Getenv("JWT_KEY"))
+var jwtKey []byte
+var AdminEmail string
 
-var AdminEmail = os.Getenv("ADMIN_EMAIL")
-
+// Claims é a estrutura que será codificada no token JWT.
 type Claims struct {
 	UserID  uint `json:"user_id"`
 	IsAdmin bool `json:"isAdmin"`
@@ -27,21 +28,24 @@ type Claims struct {
 }
 
 func main() {
-	// A LÓGICA DE TENTATIVAS PARA PRODUÇÃO
-	var dsn string
-	if os.Getenv("DATABASE_URL") != "" {
-		dsn = os.Getenv("DATABASE_URL")
-	} else {
-		log.Println("Aviso: DATABASE_URL não definida, a usar valor padrão para desenvolvimento local.")
-		dsn = "host=db user=user password=password dbname=paroquia_db port=5432 sslmode=disable TimeZone=America/Sao_Paulo"
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("Aviso: Não foi possível carregar o ficheiro .env. A usar variáveis de ambiente do sistema.")
+	}
+
+	jwtKey = []byte(os.Getenv("JWT_KEY"))
+	AdminEmail = os.Getenv("ADMIN_EMAIL")
+	dsn := os.Getenv("DATABASE_URL")
+
+	if dsn == "" {
+		log.Fatal("Erro: DATABASE_URL não está definida.")
 	}
 	
-	// Tenta conectar-se à base de dados 5 vezes antes de desistir.
 	for i := 0; i < 5; i++ {
 		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 		if err == nil {
 			log.Println("Conexão com o banco de dados estabelecida com sucesso.")
-			break // Sai do loop se a conexão for bem-sucedida
+			break
 		}
 		log.Printf("Tentativa %d: Falha ao conectar ao banco de dados. Tentando novamente em 5 segundos...", i+1)
 		time.Sleep(5 * time.Second)
@@ -51,8 +55,7 @@ func main() {
 		log.Fatal("Não foi possível conectar ao banco de dados após várias tentativas:", err)
 	}
 
-
-	db.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &Registration{}, &LoginInput{}, &Contribution{}, &MassTime{})
+	db.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &Registration{}, &Contribution{}, &MassTime{})
 	seedDatabase()
 
 	router := gin.Default()
@@ -105,8 +108,7 @@ func main() {
 	router.Run(":" + port)
 }
 
-// ... (Resto do ficheiro continua igual) ...
-
+// Middlewares de Autenticação e Autorização
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -194,5 +196,4 @@ func seedDatabase() {
 		db.Create(&massTimes)
 	}
 }
-
 
