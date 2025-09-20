@@ -95,7 +95,10 @@ type Claims struct {
 
 // --- Função Principal ---
 func main() {
+	// Carrega variáveis de ambiente do ficheiro .env (apenas para desenvolvimento local)
 	godotenv.Load()
+
+	// Carrega as configurações das variáveis de ambiente
 	jwtKey = []byte(os.Getenv("JWT_SECRET_KEY"))
 	AdminEmail = os.Getenv("ADMIN_EMAIL")
 
@@ -105,21 +108,24 @@ func main() {
 
 	router := gin.Default()
 
-	config := cors.DefaultConfig()
-	// Mantenha esta configuração aberta por agora para garantir que não há problemas de CORS.
-	// Depois de tudo funcionar, podemos voltar a restringi-la.
-	config.AllowAllOrigins = true
-	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"}
-	config.AllowHeaders = []string{"Origin", "Content-Type", "Authorization"}
+	// --- CONFIGURAÇÃO DE CORS ROBUSTA PARA PRODUÇÃO ---
+	// Esta configuração é mais explícita e segura.
+	config := cors.Config{
+		// Lê a variável de ambiente para permitir pedidos apenas do seu frontend.
+		// Garanta que a variável CORS_ALLOWED_ORIGIN está definida como https://plataforma-paroquia-1.onrender.com
+		AllowOrigins:     []string{os.Getenv("CORS_ALLOWED_ORIGIN")},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}
 	router.Use(cors.New(config))
+	// --- FIM DA CONFIGURAÇÃO DE CORS ---
 
 	api := router.Group("/api")
 	{
-		// --- NOVA ROTA DE HEALTH CHECK ---
-		// Esta rota responde à Render para dizer que o serviço está a funcionar.
 		api.GET("/health", HealthCheckHandler)
-
-		// Rotas Públicas
 		api.POST("/register", RegisterUser)
 		api.POST("/login", LoginUser)
 		api.GET("/parish-info", GetParishInfo)
@@ -127,7 +133,6 @@ func main() {
 		api.GET("/pastorais", GetPastorais)
 		api.GET("/mass-times", GetMassTimes)
 
-		// Rotas Protegidas para Utilizadores Autenticados
 		authenticated := api.Group("/")
 		authenticated.Use(AuthMiddleware())
 		{
@@ -137,7 +142,6 @@ func main() {
 			authenticated.GET("/my-contributions", GetMyContributions)
 		}
 
-		// Rotas de Administração
 		admin := api.Group("/admin")
 		admin.Use(AuthMiddleware(), AdminMiddleware())
 		{
@@ -159,7 +163,6 @@ func main() {
 
 // --- Handlers (Lógica das Rotas) ---
 
-// --- NOVO HANDLER PARA O HEALTH CHECK ---
 func HealthCheckHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "UP"})
 }
