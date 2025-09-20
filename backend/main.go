@@ -35,13 +35,13 @@ type User struct {
 
 type Service struct {
 	gorm.Model
-	Name        string `json:"name"`
+	Name        string `json:"name" gorm:"unique"`
 	Description string `json:"description"`
 }
 
 type Pastoral struct {
 	gorm.Model
-	Name        string `json:"name"`
+	Name        string `json:"name" gorm:"unique"`
 	Description string `json:"description"`
 	MeetingInfo string `json:"meeting_info"`
 }
@@ -101,11 +101,10 @@ func main() {
 
 	ConnectDatabase()
 	db.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &MassTime{}, &Registration{}, &Contribution{})
-	seedDatabase() // A chamada para a função de seeding
+	seedDatabase()
 
 	router := gin.Default()
 
-	// --- CONFIGURAÇÃO DE CORS ROBUSTA PARA PRODUÇÃO ---
 	config := cors.Config{
 		AllowOrigins:     []string{os.Getenv("CORS_ALLOWED_ORIGIN")},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -120,7 +119,6 @@ func main() {
 	{
 		api.GET("/health", HealthCheckHandler)
 		api.POST("/register", RegisterUser)
-		// ... (o resto das suas rotas continua igual)
 		api.POST("/login", LoginUser)
 		api.GET("/parish-info", GetParishInfo)
 		api.GET("/services", GetServices)
@@ -161,89 +159,61 @@ func HealthCheckHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "UP"})
 }
 
-// ... (todas as suas outras funções de handler, como RegisterUser, LoginUser, etc., continuam aqui)
 func RegisterUser(c *gin.Context) {
 	var input RegisterInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados inválidos: " + err.Error()})
 		return
 	}
-
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Falha ao processar a senha"})
-		return
-	}
-
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	user := User{
-		Name:     input.Name,
-		Email:    input.Email,
-		Password: string(hashedPassword),
-		Address:  input.Address,
-		DOB:      input.DOB,
-		Gender:   input.Gender,
-		IsAdmin:  input.Email == AdminEmail,
+		Name: input.Name, Email: input.Email, Password: string(hashedPassword),
+		Address: input.Address, DOB: input.DOB, Gender: input.Gender,
+		IsAdmin: input.Email == AdminEmail,
 	}
-
 	if result := db.Create(&user); result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Não foi possível registar o utilizador. O e-mail já pode existir."})
 		return
 	}
-
 	c.JSON(http.StatusOK, gin.H{"message": "Utilizador registado com sucesso!"})
 }
 
 func LoginUser(c *gin.Context) {
 	var input LoginInput
 	var user User
-
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados inválidos"})
 		return
 	}
-
 	if err := db.Where("email = ?", input.Email).First(&user).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Utilizador não encontrado."})
 		return
 	}
-
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Senha incorreta."})
 		return
 	}
-
 	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := &Claims{
 		UserID:  user.ID,
 		IsAdmin: user.IsAdmin,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expirationTime),
-		},
+		RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(expirationTime)},
 	}
-
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString(jwtKey)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Não foi possível gerar o token"})
 		return
 	}
-
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Login bem-sucedido!",
-		"token":   tokenString,
-		"user": gin.H{
-			"id":      user.ID,
-			"name":    user.Name,
-			"email":   user.Email,
-			"isAdmin": user.IsAdmin,
-		},
+		"message": "Login bem-sucedido!", "token": tokenString,
+		"user":    gin.H{"id": user.ID, "name": user.Name, "email": user.Email, "isAdmin": user.IsAdmin},
 	})
 }
 
 func GetParishInfo(c *gin.Context) {
 	info := gin.H{
-		"name":              "Paróquia Santo Antônio de Marília",
-		"history":           "A Paróquia Santo Antônio de Marília, confiada aos cuidados dos Padres Estigmatinos, tem uma rica história de fé e serviço à comunidade...",
+		"name": "Paróquia Santo Antônio de Marília", "history": "A Paróquia Santo Antônio de Marília...",
 		"secretariat_hours": "Segunda a sexta das 8h às 17h30\nSábado das 8h às 12h",
 		"priest_hours":      "Segunda: 9h30 às 11h | 14h às 15h30\nQuarta, quinta e sexta: 9h às 11h30 | 14h às 15h30",
 	}
@@ -252,28 +222,19 @@ func GetParishInfo(c *gin.Context) {
 
 func GetServices(c *gin.Context) {
 	var services []Service
-	if err := db.Find(&services).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar serviços"})
-		return
-	}
+	db.Find(&services)
 	c.JSON(http.StatusOK, services)
 }
 
 func GetPastorais(c *gin.Context) {
 	var pastorals []Pastoral
-	if err := db.Find(&pastorals).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar pastorais"})
-		return
-	}
+	db.Find(&pastorals)
 	c.JSON(http.StatusOK, pastorals)
 }
 
 func GetMassTimes(c *gin.Context) {
 	var massTimes []MassTime
-	if err := db.Order("location, id").Find(&massTimes).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar horários de missa"})
-		return
-	}
+	db.Order("location, id").Find(&massTimes)
 	c.JSON(http.StatusOK, massTimes)
 }
 
@@ -287,19 +248,12 @@ func CreateRegistration(c *gin.Context) {
 	}
 	userID, _ := c.Get("userID")
 	var existingReg Registration
-	if err := db.Where("user_id = ? AND service_id = ?", userID, input.ServiceID).First(&existingReg).Error; err == nil {
+	if db.Where("user_id = ? AND service_id = ?", userID, input.ServiceID).First(&existingReg).Error == nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "Você já está inscrito neste serviço."})
 		return
 	}
-	registration := Registration{
-		UserID:    userID.(uint),
-		ServiceID: input.ServiceID,
-		Status:    "Pendente",
-	}
-	if result := db.Create(&registration); result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Não foi possível processar a inscrição."})
-		return
-	}
+	registration := Registration{UserID: userID.(uint), ServiceID: input.ServiceID, Status: "Pendente"}
+	db.Create(&registration)
 	var service Service
 	db.First(&service, input.ServiceID)
 	c.JSON(http.StatusOK, gin.H{"message": "Inscrição em '" + service.Name + "' realizada com sucesso!"})
@@ -308,10 +262,7 @@ func CreateRegistration(c *gin.Context) {
 func GetMyRegistrations(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	var registrations []Registration
-	if err := db.Preload("Service").Where("user_id = ?", userID).Find(&registrations).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar inscrições."})
-		return
-	}
+	db.Preload("Service").Where("user_id = ?", userID).Find(&registrations)
 	c.JSON(http.StatusOK, registrations)
 }
 
@@ -320,40 +271,23 @@ func CreateContribution(c *gin.Context) {
 		Value  float64 `json:"value" binding:"required"`
 		Method string  `json:"method" binding:"required"`
 	}
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados de contribuição inválidos."})
-		return
-	}
+	c.ShouldBindJSON(&input)
 	userID, _ := c.Get("userID")
-	contribution := Contribution{
-		UserID: userID.(uint),
-		Value:  input.Value,
-		Method: input.Method,
-		Status: "Confirmado",
-	}
-	if result := db.Create(&contribution); result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Não foi possível registar a contribuição."})
-		return
-	}
+	contribution := Contribution{UserID: userID.(uint), Value: input.Value, Method: input.Method, Status: "Confirmado"}
+	db.Create(&contribution)
 	c.JSON(http.StatusOK, gin.H{"message": "Contribuição registada com sucesso!"})
 }
 
 func GetMyContributions(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	var contributions []Contribution
-	if err := db.Where("user_id = ?", userID).Order("created_at desc").Find(&contributions).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar contribuições."})
-		return
-	}
+	db.Where("user_id = ?", userID).Order("created_at desc").Find(&contributions)
 	c.JSON(http.StatusOK, contributions)
 }
 
 func GetAllRegistrations(c *gin.Context) {
 	var registrations []Registration
-	if err := db.Preload("User").Preload("Service").Order("created_at desc").Find(&registrations).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar todas as inscrições."})
-		return
-	}
+	db.Preload("User").Preload("Service").Order("created_at desc").Find(&registrations)
 	c.JSON(http.StatusOK, registrations)
 }
 
@@ -361,98 +295,54 @@ func UpdateRegistrationStatus(c *gin.Context) {
 	var input struct {
 		Status string `json:"status" binding:"required"`
 	}
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Novo status é obrigatório."})
-		return
-	}
+	c.ShouldBindJSON(&input)
 	regID := c.Param("id")
 	var registration Registration
-	if err := db.First(&registration, regID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Inscrição não encontrada."})
-		return
-	}
+	db.First(&registration, regID)
 	registration.Status = input.Status
-	if err := db.Save(&registration).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Falha ao atualizar o status."})
-		return
-	}
+	db.Save(&registration)
 	c.JSON(http.StatusOK, gin.H{"message": "Status da inscrição atualizado com sucesso!"})
 }
 
 func GetDashboardStats(c *gin.Context) {
-	var totalUsers int64
-	var totalRegistrations int64
-	var totalContributions int64
+	var totalUsers, totalRegistrations, totalContributions int64
 	var totalContributionValue float64
-
 	db.Model(&User{}).Count(&totalUsers)
 	db.Model(&Registration{}).Count(&totalRegistrations)
 	db.Model(&Contribution{}).Count(&totalContributions)
 	db.Model(&Contribution{}).Select("sum(value)").Row().Scan(&totalContributionValue)
-
-	stats := gin.H{
-		"total_users":              totalUsers,
-		"total_registrations":      totalRegistrations,
-		"total_contributions":      totalContributions,
-		"total_contribution_value": totalContributionValue,
-	}
-
-	c.JSON(http.StatusOK, stats)
+	c.JSON(http.StatusOK, gin.H{
+		"total_users": totalUsers, "total_registrations": totalRegistrations,
+		"total_contributions": totalContributions, "total_contribution_value": totalContributionValue,
+	})
 }
 
 func GetAllUsers(c *gin.Context) {
 	var users []User
-	if err := db.Order("name asc").Find(&users).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar utilizadores."})
-		return
-	}
+	db.Order("name asc").Find(&users)
 	c.JSON(http.StatusOK, users)
 }
 
 func UpdateUser(c *gin.Context) {
 	userID := c.Param("id")
 	var user User
-	if err := db.First(&user, userID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Utilizador não encontrado."})
-		return
-	}
-
+	db.First(&user, userID)
 	var input struct {
-		Name    string `json:"name"`
-		Email   string `json:"email"`
-		Address string `json:"address"`
-		DOB     string `json:"dob"`
-		Gender  string `json:"gender"`
-		IsAdmin bool   `json:"isAdmin"`
+		Name string `json:"name"`; Email string `json:"email"`; Address string `json:"address"`
+		DOB string `json:"dob"`; Gender string `json:"gender"`; IsAdmin bool `json:"isAdmin"`
 	}
-
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados de entrada inválidos."})
-		return
-	}
-
-	user.Name = input.Name
-	user.Email = input.Email
-	user.Address = input.Address
-	user.DOB = input.DOB
-	user.Gender = input.Gender
-	user.IsAdmin = input.IsAdmin
-
-	if err := db.Save(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Falha ao atualizar o utilizador."})
-		return
-	}
-
+	c.ShouldBindJSON(&input)
+	user.Name, user.Email, user.Address = input.Name, input.Email, input.Address
+	user.DOB, user.Gender, user.IsAdmin = input.DOB, input.Gender, input.IsAdmin
+	db.Save(&user)
 	c.JSON(http.StatusOK, gin.H{"message": "Utilizador atualizado com sucesso!"})
 }
-// --- Funções de Suporte (Middlewares e Conexão com DB) ---
+
+// --- Funções de Suporte ---
 
 func ConnectDatabase() {
 	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		log.Fatal("DATABASE_URL não definida")
-	}
-
+	if dsn == "" { log.Fatal("DATABASE_URL não definida") }
 	var err error
 	for i := 0; i < 5; i++ {
 		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
@@ -463,31 +353,19 @@ func ConnectDatabase() {
 		log.Printf("Tentativa %d: Falha ao conectar. Tentando novamente em 5s...", i+1)
 		time.Sleep(5 * time.Second)
 	}
-
-	log.Fatalf("Não foi possível conectar ao banco de dados após várias tentativas: %v", err)
+	log.Fatalf("Não foi possível conectar ao banco de dados: %v", err)
 }
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Cabeçalho de autorização não encontrado"})
-			c.Abort()
-			return
-		}
-
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		tokenString := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
 		claims := &Claims{}
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return jwtKey, nil
-		})
-
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) { return jwtKey, nil })
 		if err != nil || !token.Valid {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token inválido ou expirado"})
 			c.Abort()
 			return
 		}
-
 		c.Set("userID", claims.UserID)
 		c.Set("isAdmin", claims.IsAdmin)
 		c.Next()
@@ -496,8 +374,8 @@ func AuthMiddleware() gin.HandlerFunc {
 
 func AdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		isAdmin, exists := c.Get("isAdmin")
-		if !exists || !isAdmin.(bool) {
+		isAdmin, _ := c.Get("isAdmin")
+		if !isAdmin.(bool) {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Acesso negado. Recurso de administrador."})
 			c.Abort()
 			return
@@ -506,73 +384,44 @@ func AdminMiddleware() gin.HandlerFunc {
 	}
 }
 
-// --- Função de Seeding com LOGS DE DIAGNÓSTICO ---
+// --- Função de Seeding Inteligente ---
 func seedDatabase() {
-	log.Println("A verificar o estado do 'seed' da base de dados...")
-	var count int64
+	log.Println("A iniciar o 'seeding' inteligente da base de dados...")
 
 	// Seed Services
-	db.Model(&Service{}).Count(&count)
-	if count == 0 {
-		log.Println("A tabela de Serviços está vazia. A semear os serviços...")
-		services := []Service{
-			{Name: "Batismo - Curso de Pais e Padrinhos", Description: "Inscrição para o curso preparatório para o batismo de crianças."},
-			{Name: "Catequese Infantil", Description: "Inscrições para a catequese para crianças e pré-adolescentes."},
-			{Name: "Catequese de Adultos", Description: "Preparação para os sacramentos da iniciação cristã para adultos."},
-			{Name: "Curso de Noivos", Description: "Curso preparatório obrigatório para casais que desejam se casar na igreja."},
-			{Name: "Encontro de Casais com Cristo (ECC)", Description: "Movimento da Igreja Católica para casais."},
-			{Name: "Agendamento de Casamento", Description: "Reserve a data para a sua cerimônia de casamento na paróquia."},
-			{Name: "Crisma", Description: "Sacramento da confirmação para jovens e adultos."},
-			{Name: "Primeira Eucaristia", Description: "Preparação para receber o sacramento da Eucaristia pela primeira vez."},
-		}
-		if err := db.Create(&services).Error; err != nil {
-			log.Printf("ERRO ao semear os serviços: %v\n", err)
-		} else {
-			log.Println("Serviços semeados com sucesso.")
-		}
-	} else {
-		log.Println("A tabela de Serviços já contém dados. A ignorar o 'seed'.")
+	services := []Service{
+		{Name: "Batismo - Curso de Pais e Padrinhos", Description: "Inscrição para o curso preparatório para o batismo de crianças."},
+		{Name: "Catequese Infantil", Description: "Inscrições para a catequese para crianças e pré-adolescentes."},
+		{Name: "Curso de Noivos", Description: "Curso preparatório obrigatório para casais que desejam se casar na igreja."},
 	}
+	for _, service := range services {
+		// Tenta encontrar o serviço pelo nome. Se não encontrar, cria.
+		db.FirstOrCreate(&service, Service{Name: service.Name})
+	}
+	log.Println("Seeding de serviços concluído.")
 
 	// Seed Pastorals
-	db.Model(&Pastoral{}).Count(&count)
-	if count == 0 {
-		log.Println("A tabela de Pastorais está vazia. A semear as pastorais...")
-		pastorals := []Pastoral{
-			{Name: "Pastoral da Criança", Description: "Acompanhamento de crianças carentes e suas famílias.", MeetingInfo: "Sábados, às 14h, no Salão Paroquial."},
-			{Name: "Pastoral do Dízimo", Description: "Conscientização sobre a importância da contribuição para a comunidade.", MeetingInfo: "Primeira terça-feira do mês, às 19h30."},
-			{Name: "Pastoral Familiar", Description: "Apoio e formação para as famílias da comunidade.", MeetingInfo: "Último domingo do mês, após a missa das 10h."},
-			{Name: "Grupo de Jovens", Description: "Encontros de oração, formação e convivência para a juventude.", MeetingInfo: "Sextas-feiras, às 20h, na sala 5."},
-		}
-		if err := db.Create(&pastorals).Error; err != nil {
-			log.Printf("ERRO ao semear as pastorais: %v\n", err)
-		} else {
-			log.Println("Pastorais semeadas com sucesso.")
-		}
-	} else {
-		log.Println("A tabela de Pastorais já contém dados. A ignorar o 'seed'.")
+	pastorals := []Pastoral{
+		{Name: "Pastoral da Criança", Description: "Acompanhamento de crianças carentes e suas famílias.", MeetingInfo: "Sábados, às 14h, no Salão Paroquial."},
+		{Name: "Pastoral do Dízimo", Description: "Conscientização sobre a importância da contribuição.", MeetingInfo: "Primeira terça-feira do mês, às 19h30."},
 	}
+	for _, pastoral := range pastorals {
+		db.FirstOrCreate(&pastoral, Pastoral{Name: pastoral.Name})
+	}
+	log.Println("Seeding de pastorais concluído.")
 
 	// Seed Mass Times
-	db.Model(&MassTime{}).Count(&count)
-	if count == 0 {
-		log.Println("A tabela de Horários de Missa está vazia. A semear os horários...")
-		massTimes := []MassTime{
-			{Day: "Segunda e Quarta", Time: "19h30", Location: "Igreja Matriz", Description: "Novena N. Sra. Perpétuo Socorro"},
-			{Day: "Quinta-feira", Time: "12h", Location: "Igreja Matriz", Description: "Exposição do Santíssimo"},
-			{Day: "Domingo", Time: "7h", Location: "Igreja Matriz", Description: ""},
-			{Day: "Domingo", Time: "10h30", Location: "Igreja Matriz", Description: ""},
-			{Day: "Domingo", Time: "19h30", Location: "Igreja Matriz", Description: ""},
-			{Day: "Domingo", Time: "9h", Location: "Capela São Carlos (Rua Piratininga, 1111)", Description: ""},
-		}
-		if err := db.Create(&massTimes).Error; err != nil {
-			log.Printf("ERRO ao semear os horários de missa: %v\n", err)
-		} else {
-			log.Println("Horários de missa semeados com sucesso.")
-		}
-	} else {
-		log.Println("A tabela de Horários de Missa já contém dados. A ignorar o 'seed'.")
+	massTimes := []MassTime{
+		{Day: "Domingo", Time: "7h", Location: "Igreja Matriz"},
+		{Day: "Domingo", Time: "10h30", Location: "Igreja Matriz"},
+		{Day: "Domingo", Time: "19h30", Location: "Igreja Matriz"},
+		{Day: "Domingo", Time: "9h", Location: "Capela São Carlos"},
 	}
-	log.Println("Verificação do 'seed' da base de dados terminada.")
+	for _, mt := range massTimes {
+		// Tenta encontrar pelo conjunto de dia, hora e local. Se não encontrar, cria.
+		db.FirstOrCreate(&mt, MassTime{Day: mt.Day, Time: mt.Time, Location: mt.Location})
+	}
+	log.Println("Seeding de horários de missa concluído.")
+	log.Println("Seeding inteligente terminado.")
 }
 
