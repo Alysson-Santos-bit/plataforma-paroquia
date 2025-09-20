@@ -170,29 +170,18 @@ const HomePage = ({ token }) => {
 
     useEffect(() => {
         const loadData = async () => {
-            console.log("[DIAGNÓSTICO FRONTEND] A iniciar o carregamento dos dados...");
             try {
-                const massTimes = await apiService.getMassTimes();
-                console.log("[DIAGNÓSTICO FRONTEND] Horários de missa recebidos:", massTimes);
-
-                const services = await apiService.getServices();
-                console.log("[DIAGNÓSTICO FRONTEND] Serviços recebidos:", services);
-                
-                const [info, pastorais] = await Promise.all([
+                const [info, massTimes, services, pastorais] = await Promise.all([
                     apiService.getParishInfo(),
+                    apiService.getMassTimes(),
+                    apiService.getServices(),
                     apiService.getPastorais()
                 ]);
-                 console.log("[DIAGNÓSTICO FRONTEND] Informações e pastorais recebidas.");
-
                 setData({ info, massTimes: massTimes || [], services: services || [], pastorais: pastorais || [] });
-                console.log("[DIAGNÓSTICO FRONTEND] Estado 'data' atualizado.");
-
             } catch (err) {
-                console.error("[DIAGNÓSTICO FRONTEND] Erro ao carregar dados:", err);
                 setError('Não foi possível carregar as informações da paróquia.');
             } finally {
                 setLoading(false);
-                console.log("[DIAGNÓSTICO FRONTEND] Carregamento terminado.");
             }
         };
         loadData();
@@ -228,8 +217,8 @@ const HomePage = ({ token }) => {
                         {data.massTimes && data.massTimes.length > 0 ? data.massTimes.map(mt => (
                             <div key={mt.ID} className="border-b pb-2">
                                 <p className="font-bold text-lg">{mt.location}</p>
-                                <p className="text-gray-800">{mt.Day}: <span className="font-semibold">{mt.Time}</span></p>
-                                {mt.Description && <p className="text-sm text-gray-600 mt-1">{mt.Description}</p>}
+                                <p className="text-gray-800">{mt.day}: <span className="font-semibold">{mt.time}</span></p>
+                                {mt.description && <p className="text-sm text-gray-600 mt-1">{mt.description}</p>}
                             </div>
                         )) : <p className="text-gray-500">Nenhum horário de missa encontrado no momento.</p>}
                     </div>
@@ -239,8 +228,8 @@ const HomePage = ({ token }) => {
                     <div className="space-y-3">
                         {data.services && data.services.length > 0 ? data.services.map(s => (
                             <div key={s.ID} className="border-b pb-2">
-                                <h3 className="font-bold">{s.Name}</h3>
-                                <p className="text-sm text-gray-600 mb-2">{s.Description}</p>
+                                <h3 className="font-bold">{s.name}</h3>
+                                <p className="text-sm text-gray-600 mb-2">{s.description}</p>
                                 <button onClick={() => handleRegisterService(s.ID)} className="bg-blue-500 text-white px-3 py-1 text-sm rounded-md hover:bg-blue-600">Inscrever-se</button>
                             </div>
                         )) : <p className="text-gray-500">Nenhum serviço disponível para inscrição no momento.</p>}
@@ -312,7 +301,7 @@ const MyProfilePage = ({ token }) => {
                         {data.registrations.length > 0 ? data.registrations.map(reg => (
                             <div key={reg.ID} className="p-3 border rounded-md flex justify-between items-center">
                                 <div>
-                                    <p className="font-bold">{reg.service.Name}</p>
+                                    <p className="font-bold">{reg.service.name}</p>
                                     <p className="text-sm text-gray-500">Data: {new Date(reg.CreatedAt).toLocaleDateString()}</p>
                                 </div>
                                 <span className={`px-3 py-1 text-sm rounded-full ${reg.Status === 'Pendente' ? 'bg-yellow-200 text-yellow-800' : reg.Status === 'Confirmado' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
@@ -329,9 +318,9 @@ const MyProfilePage = ({ token }) => {
                             <div key={con.ID} className="p-3 border rounded-md flex justify-between items-center">
                                 <div>
                                     <p className="font-bold text-lg">R$ {con.value.toFixed(2)}</p>
-                                    <p className="text-sm text-gray-500">Em {new Date(con.CreatedAt).toLocaleDateString()} via {con.Method}</p>
+                                    <p className="text-sm text-gray-500">Em {new Date(con.CreatedAt).toLocaleDateString()} via {con.method}</p>
                                 </div>
-                                <span className="px-3 py-1 text-sm rounded-full bg-green-200 text-green-800">{con.Status}</span>
+                                <span className="px-3 py-1 text-sm rounded-full bg-green-200 text-green-800">{con.status}</span>
                             </div>
                         )) : <p className="text-gray-500">Nenhuma doação registada.</p>}
                     </div>
@@ -429,8 +418,8 @@ const AdminPage = ({ token }) => {
                             <tbody>
                                 {registrations.map(reg => (
                                     <tr key={reg.ID}>
-                                        <td className="py-2 px-4 border-b">{reg.user?.Name || 'N/A'}</td>
-                                        <td className="py-2 px-4 border-b">{reg.service?.Name || 'N/A'}</td>
+                                        <td className="py-2 px-4 border-b">{reg.user?.name || 'N/A'}</td>
+                                        <td className="py-2 px-4 border-b">{reg.service?.name || 'N/A'}</td>
                                         <td className="py-2 px-4 border-b">{new Date(reg.CreatedAt).toLocaleDateString()}</td>
                                         <td className="py-2 px-4 border-b">{reg.Status}</td>
                                         <td className="py-2 px-4 border-b">
