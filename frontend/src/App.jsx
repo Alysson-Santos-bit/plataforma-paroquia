@@ -1,8 +1,8 @@
 import React from 'react';
-// CORREÇÃO: Alterado para usar os URLs completos do CDN do Firebase para os módulos ES.
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+// CORREÇÃO: Revertido para os imports padrão de pacotes do Firebase para corrigir o erro de build.
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
+import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, doc, setDoc, getDoc } from 'firebase/firestore';
 
 // Shim para 'process' para evitar erros de tempo de execução em ambientes de navegador
 window.process = typeof process === 'undefined' ? { env: {} } : process;
