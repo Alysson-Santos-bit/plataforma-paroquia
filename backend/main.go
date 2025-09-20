@@ -4,11 +4,13 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -16,8 +18,8 @@ import (
 
 // --- Variáveis Globais ---
 var db *gorm.DB
-var jwtKey = []byte(os.Getenv("JWT_SECRET_KEY"))
-var AdminEmail = os.Getenv("ADMIN_EMAIL")
+var jwtKey []byte
+var AdminEmail string
 
 // --- Estruturas (Models) ---
 type User struct {
@@ -93,14 +95,25 @@ type Claims struct {
 
 // --- Função Principal ---
 func main() {
+	// Carrega variáveis de ambiente do ficheiro .env (para desenvolvimento local)
+	godotenv.Load()
+
+	// Carrega as configurações das variáveis de ambiente
+	jwtKey = []byte(os.Getenv("JWT_SECRET_KEY"))
+	AdminEmail = os.Getenv("ADMIN_EMAIL")
+
 	ConnectDatabase()
 	db.AutoMigrate(&User{}, &Service{}, &Pastoral{}, &MassTime{}, &Registration{}, &Contribution{})
+	// Popula a base de dados com dados iniciais se estiver vazia
+	seedDatabase()
 
 	router := gin.Default()
 
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{os.Getenv("CORS_ALLOWED_ORIGIN"), "http://localhost:3000"}
-	if os.Getenv("CORS_ALLOWED_ORIGIN") == "" {
+	allowedOrigin := os.Getenv("CORS_ALLOWED_ORIGIN")
+	if allowedOrigin != "" {
+		config.AllowOrigins = []string{allowedOrigin, "http://localhost:3000"}
+	} else {
 		config.AllowAllOrigins = true
 	}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"}
@@ -109,6 +122,7 @@ func main() {
 
 	api := router.Group("/api")
 	{
+		// Rotas Públicas
 		api.POST("/register", RegisterUser)
 		api.POST("/login", LoginUser)
 		api.GET("/parish-info", GetParishInfo)
@@ -116,6 +130,7 @@ func main() {
 		api.GET("/pastorais", GetPastorais)
 		api.GET("/mass-times", GetMassTimes)
 
+		// Rotas Protegidas para Utilizadores Autenticados
 		authenticated := api.Group("/")
 		authenticated.Use(AuthMiddleware())
 		{
@@ -125,6 +140,7 @@ func main() {
 			authenticated.GET("/my-contributions", GetMyContributions)
 		}
 
+		// Rotas de Administração
 		admin := api.Group("/admin")
 		admin.Use(AuthMiddleware(), AdminMiddleware())
 		{
@@ -454,102 +470,6 @@ func ConnectDatabase() {
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tokenString := c.GetHeader("Authorization")
-		if tokenString == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token de autorização não fornecido"})
-			c.Abort()
-			return
-		}
-		if len(tokenString) > 7 && tokenString[:7] == "Bearer " {
-			tokenString = tokenString[7:]
-		}
-
-		claims := &Claims{}
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return jwtKey, nil
-		})
-
-		if err != nil || !token.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token inválido"})
-			c.Abort()
-			return
-		}
-
-		c.Set("userID", claims.UserID)
-		c.Set("isAdmin", claims.IsAdmin)
-
-		c.Next()
-	}
-}
-
-func AdminMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		isAdmin, exists := c.Get("isAdmin")
-		if !exists || !isAdmin.(bool) {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Acesso negado. Requer privilégios de administrador."})
-			c.Abort()
-			return
-		}
-		c.Next()
-	}
-}
-
-
-
-// AuthMiddleware verifica o token JWT
-func AuthMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		tokenString := c.GetHeader("Authorization")
-		if tokenString == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token de autorização não fornecido"})
-			c.Abort()
-			return
-		}
-		// O token geralmente vem no formato "Bearer <token>", então removemos o prefixo.
-		if len(tokenString) > 7 && tokenString[:7] == "Bearer " {
-			tokenString = tokenString[7:]
-		}
-
-		claims := &Claims{}
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return jwtKey, nil
-		})
-
-		if err != nil || !token.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token inválido"})
-			c.Abort()
-			return
-		}
-
-		// Adiciona o ID do utilizador e o status de admin ao contexto para uso posterior nos handlers
-		c.Set("userID", claims.UserID)
-		c.Set("isAdmin", claims.IsAdmin)
-
-		c.Next()
-	}
-}
-
-// AdminMiddleware verifica se o utilizador é um administrador
-func AdminMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		isAdmin, exists := c.Get("isAdmin")
-		if !exists || !isAdmin.(bool) {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Acesso negado. Requer privilégios de administrador."})
-			c.Abort()
-			return
-		}
-		c.Next()
-	}
-}
-
-
-
-
-
-
-// Middlewares de Autenticação e Autorização
-func AuthMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Cabeçalho de autorização não encontrado"})
@@ -588,21 +508,21 @@ func AdminMiddleware() gin.HandlerFunc {
 }
 
 func seedDatabase() {
-    var count int64
-    db.Model(&Service{}).Count(&count)
-    if count == 0 {
-        services := []Service{
-            {Name: "Batismo - Curso de Pais e Padrinhos", Description: "Inscrição para o curso preparatório para o batismo de crianças."},
-            {Name: "Catequese Infantil", Description: "Inscrições para a catequese para crianças e pré-adolescentes."},
-            {Name: "Catequese de Adultos", Description: "Preparação para os sacramentos da iniciação cristã para adultos."},
-            {Name: "Curso de Noivos", Description: "Curso preparatório obrigatório para casais que desejam se casar na igreja."},
-            {Name: "Encontro de Casais com Cristo (ECC)", Description: "Movimento da Igreja Católica para casais."},
-            {Name: "Agendamento de Casamento", Description: "Reserve a data para a sua cerimônia de casamento na paróquia."},
-						{Name: "Crisma", Description: "Sacramento da confirmação para jovens e adultos."},
-						{Name: "Primeira Eucaristia", Description: "Preparação para receber o sacramento da Eucaristia pela primeira vez."},
-        }
-        db.Create(&services)
-    }
+	var count int64
+	db.Model(&Service{}).Count(&count)
+	if count == 0 {
+		services := []Service{
+			{Name: "Batismo - Curso de Pais e Padrinhos", Description: "Inscrição para o curso preparatório para o batismo de crianças."},
+			{Name: "Catequese Infantil", Description: "Inscrições para a catequese para crianças e pré-adolescentes."},
+			{Name: "Catequese de Adultos", Description: "Preparação para os sacramentos da iniciação cristã para adultos."},
+			{Name: "Curso de Noivos", Description: "Curso preparatório obrigatório para casais que desejam se casar na igreja."},
+			{Name: "Encontro de Casais com Cristo (ECC)", Description: "Movimento da Igreja Católica para casais."},
+			{Name: "Agendamento de Casamento", Description: "Reserve a data para a sua cerimônia de casamento na paróquia."},
+			{Name: "Crisma", Description: "Sacramento da confirmação para jovens e adultos."},
+			{Name: "Primeira Eucaristia", Description: "Preparação para receber o sacramento da Eucaristia pela primeira vez."},
+		}
+		db.Create(&services)
+	}
 
 	db.Model(&Pastoral{}).Count(&count)
 	if count == 0 {
