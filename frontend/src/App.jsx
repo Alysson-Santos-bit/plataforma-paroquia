@@ -63,7 +63,7 @@ const Header = ({ user, setView, onLogout }) => (
       {user ? (
         <>
           <button onClick={() => setView('home')} className="text-gray-600 hover:text-blue-600">Início</button>
-          <button onClick={() => setView('profile')} className="text-gray-600 hover:text-blue-600">O Meu Perfil</button>
+          <button onClick={() => setView('profile')} className="text-gray-600 hover:text-blue-600">Meu Perfil</button>
           {user.isAdmin && (
             <button onClick={() => setView('admin')} className="font-bold text-blue-600 hover:underline">Painel Admin</button>
           )}
@@ -74,7 +74,7 @@ const Header = ({ user, setView, onLogout }) => (
       ) : (
         <>
           <button onClick={() => setView('login')} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">Entrar</button>
-          <button onClick={() => setView('register')} className="text-blue-600 border border-blue-600 px-4 py-2 rounded-md hover:bg-blue-50 transition">Registar</button>
+          <button onClick={() => setView('register')} className="text-blue-600 border border-blue-600 px-4 py-2 rounded-md hover:bg-blue-50 transition">Cadastrar</button>
         </>
       )}
     </nav>
@@ -95,7 +95,7 @@ const LoginPage = ({ setView, onLogin }) => {
             const data = await apiService.login({ email, password });
             onLogin(data.user, data.token);
         } catch (err) {
-            setError(err.message || 'Falha no login. Verifique as suas credenciais.');
+            setError(err.message || 'Falha no login. Verifique seu e-mail e senha.');
         } finally {
             setLoading(false);
         }
@@ -104,16 +104,16 @@ const LoginPage = ({ setView, onLogin }) => {
     return (
         <div className="flex justify-center items-center py-12 px-4">
             <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-xl">
-                <h2 className="text-3xl font-bold mb-6 text-center text-gray-800">Aceder à Plataforma</h2>
+                <h2 className="text-3xl font-bold mb-6 text-center text-gray-800">Acessar a Plataforma</h2>
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <input type="email" placeholder="E-mail" value={email} onChange={e => setEmail(e.target.value)} required className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500" />
                     <input type="password" placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} required className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500" />
                     {error && <p className="text-red-500 text-center">{error}</p>}
                     <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition disabled:bg-gray-400">
-                        {loading ? 'A entrar...' : 'Entrar'}
+                        {loading ? 'Entrando...' : 'Entrar'}
                     </button>
                 </form>
-                <p className="mt-6 text-center text-gray-600">Não tem uma conta? <button onClick={() => setView('register')} className="text-blue-600 hover:underline">Registe-se aqui</button></p>
+                <p className="mt-6 text-center text-gray-600">Não tem uma conta? <button onClick={() => setView('register')} className="text-blue-600 hover:underline">Cadastre-se aqui</button></p>
             </div>
         </div>
     );
@@ -134,9 +134,9 @@ const RegisterPage = ({ setView }) => {
         setLoading(true);
         try {
             const response = await apiService.register({ name, email, password });
-            setMessage(response.message || 'Registo bem-sucedido! Pode agora fazer o login.');
+            setMessage(response.message || 'Cadastro realizado com sucesso! Você já pode fazer o login.');
         } catch (err) {
-            setError(err.message || 'Ocorreu um erro no registo.');
+            setError(err.message || 'Ocorreu um erro no cadastro.');
         } finally {
             setLoading(false);
         }
@@ -153,7 +153,7 @@ const RegisterPage = ({ setView }) => {
                     {message && <p className="text-green-600 text-center bg-green-100 p-2 rounded-md">{message}</p>}
                     {error && <p className="text-red-500 text-center bg-red-100 p-2 rounded-md">{error}</p>}
                     <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition disabled:bg-gray-400">
-                        {loading ? 'A criar conta...' : 'Criar Conta'}
+                        {loading ? 'Criando conta...' : 'Criar Conta'}
                     </button>
                 </form>
                  <p className="mt-6 text-center text-gray-600">Já tem uma conta? <button onClick={() => setView('login')} className="text-blue-600 hover:underline">Faça o login</button></p>
@@ -193,12 +193,12 @@ const HomePage = ({ token }) => {
             const response = await apiService.createRegistration(serviceId, token);
             setMessage(response.message);
         } catch (err) {
-            setMessage(err.message || "Erro ao inscrever-se.");
+            setMessage(err.message || "Erro ao se inscrever.");
         }
         setTimeout(() => setMessage(''), 5000);
     };
 
-    if (loading) return <div className="text-center p-10">A carregar informações...</div>;
+    if (loading) return <div className="text-center p-10">Carregando informações...</div>;
     if (error) return <div className="text-center p-10 text-red-500">{error}</div>;
 
     return (
@@ -206,7 +206,7 @@ const HomePage = ({ token }) => {
             {message && <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4 rounded-md fixed top-20 right-8 z-50 shadow-lg" role="alert"><p>{message}</p></div>}
             
             <div className="bg-white p-6 rounded-lg shadow-lg">
-                <h2 className="text-2xl font-semibold mb-4 text-gray-700">Bem-vindo à {data.info?.name}</h2>
+                <h2 className="text-2xl font-semibold mb-4 text-gray-700">Bem-vindo(a) à {data.info?.name}</h2>
                 <p className="text-gray-600 whitespace-pre-wrap">{data.info?.history}</p>
             </div>
 
@@ -254,7 +254,7 @@ const MyProfilePage = ({ token }) => {
             ]);
             setData({ registrations: registrations || [], contributions: contributions || [] });
         } catch (err) {
-            setError("Não foi possível carregar os seus dados.");
+            setError("Não foi possível carregar seus dados.");
         } finally {
             setLoading(false);
         }
@@ -268,14 +268,14 @@ const MyProfilePage = ({ token }) => {
         const amount = prompt("Digite o valor da doação (ex: 10.50):");
         if (amount && !isNaN(parseFloat(amount))) {
             const pixKey = "00020126360014br.gov.bcb.pix0114+5514999999999520400005303986540" + parseFloat(amount).toFixed(2).replace('.', '') + "5802BR5913NOME FICTICIO6008MARILIA62070503***6304E2E1";
-            alert("Chave PIX Copia e Cola gerada (simulação):\n\n" + pixKey + "\n\nApós 'pagar', clique em OK para confirmar o registo da doação.");
+            alert("Chave PIX Copia e Cola gerada (simulação):\n\n" + pixKey + "\n\nApós 'pagar', clique em OK para confirmar o registro da doação.");
             
             try {
                 const response = await apiService.createContribution({ value: parseFloat(amount), method: 'PIX' }, token);
                 setMessage(response.message);
                 fetchData(); 
             } catch (err) {
-                setMessage(err.message || 'Erro ao registar doação.');
+                setMessage(err.message || 'Erro ao registrar doação.');
             }
              setTimeout(() => setMessage(''), 5000);
         } else if(amount) {
@@ -284,19 +284,19 @@ const MyProfilePage = ({ token }) => {
     };
 
 
-    if (loading) return <div className="text-center p-10">A carregar o seu perfil...</div>;
+    if (loading) return <div className="text-center p-10">Carregando seu perfil...</div>;
     if (error) return <div className="text-center p-10 text-red-500">{error}</div>;
 
     return (
         <div className="p-4 md:p-8 space-y-8">
              {message && <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4 rounded-md fixed top-20 right-8 z-50 shadow-lg" role="alert"><p>{message}</p></div>}
             <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold text-gray-800">O Meu Perfil</h1>
+                <h1 className="text-3xl font-bold text-gray-800">Meu Perfil</h1>
                 <button onClick={handleDonate} className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition">Fazer Doação (Dízimo)</button>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="bg-white p-6 rounded-lg shadow-lg">
-                    <h2 className="text-2xl font-semibold mb-4 text-gray-700">As Minhas Inscrições</h2>
+                    <h2 className="text-2xl font-semibold mb-4 text-gray-700">Minhas Inscrições</h2>
                     <div className="space-y-3">
                         {data.registrations.length > 0 ? data.registrations.map(reg => (
                             <div key={reg.ID} className="p-3 border rounded-md flex justify-between items-center">
@@ -312,7 +312,7 @@ const MyProfilePage = ({ token }) => {
                     </div>
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow-lg">
-                    <h2 className="text-2xl font-semibold mb-4 text-gray-700">O Meu Histórico de Doações</h2>
+                    <h2 className="text-2xl font-semibold mb-4 text-gray-700">Meu Histórico de Doações</h2>
                      <div className="space-y-3">
                         {data.contributions.length > 0 ? data.contributions.map(con => (
                             <div key={con.ID} className="p-3 border rounded-md flex justify-between items-center">
@@ -322,7 +322,7 @@ const MyProfilePage = ({ token }) => {
                                 </div>
                                 <span className="px-3 py-1 text-sm rounded-full bg-green-200 text-green-800">{con.status}</span>
                             </div>
-                        )) : <p className="text-gray-500">Nenhuma doação registada.</p>}
+                        )) : <p className="text-gray-500">Nenhuma doação registrada.</p>}
                     </div>
                 </div>
             </div>
@@ -362,7 +362,7 @@ const EditUserModal = ({ user, isOpen, onClose, onSave, token }) => {
             await apiService.updateUser(user.ID, formData, token);
             onSave(); // Fecha o modal e atualiza a lista
         } catch (error) {
-            alert("Erro ao atualizar utilizador: " + error.message);
+            alert("Erro ao atualizar usuário: " + error.message);
         } finally {
             setLoading(false);
         }
@@ -371,7 +371,7 @@ const EditUserModal = ({ user, isOpen, onClose, onSave, token }) => {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
             <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg">
-                <h2 className="text-2xl font-bold mb-4">Editar Utilizador</h2>
+                <h2 className="text-2xl font-bold mb-4">Editar Usuário</h2>
                 <div className="space-y-4">
                     <input name="name" value={formData.name} onChange={handleChange} placeholder="Nome" className="w-full p-2 border rounded-md" />
                     <input name="email" value={formData.email} onChange={handleChange} placeholder="Email" className="w-full p-2 border rounded-md" />
@@ -384,7 +384,7 @@ const EditUserModal = ({ user, isOpen, onClose, onSave, token }) => {
                 <div className="flex justify-end space-x-4 mt-6">
                     <button onClick={onClose} className="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400">Cancelar</button>
                     <button onClick={handleSave} disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400">
-                        {loading ? 'A guardar...' : 'Guardar Alterações'}
+                        {loading ? 'Salvando...' : 'Salvar Alterações'}
                     </button>
                 </div>
             </div>
@@ -445,13 +445,13 @@ const AdminPage = ({ token }) => {
     
     const handleSaveUser = () => {
         handleCloseEditModal();
-        setMessage("Utilizador atualizado com sucesso!");
+        setMessage("Usuário atualizado com sucesso!");
         fetchData(); // Re-fetch all data to show changes
         setTimeout(() => setMessage(''), 5000);
     };
 
 
-    if (loading) return <div className="text-center p-10">A carregar painel de administração...</div>;
+    if (loading) return <div className="text-center p-10">Carregando painel de administração...</div>;
     if (error) return <div className="text-center p-10 text-red-500">{error}</div>;
 
     const { stats, registrations, users } = data;
@@ -464,23 +464,23 @@ const AdminPage = ({ token }) => {
             <div className="flex border-b mb-6">
                 <button onClick={() => setView('dashboard')} className={`py-2 px-4 ${view === 'dashboard' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Dashboard</button>
                 <button onClick={() => setView('registrations')} className={`py-2 px-4 ${view === 'registrations' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Inscrições</button>
-                <button onClick={() => setView('users')} className={`py-2 px-4 ${view === 'users' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Utilizadores</button>
+                <button onClick={() => setView('users')} className={`py-2 px-4 ${view === 'users' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Usuários</button>
             </div>
 
             {view === 'dashboard' && stats && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div className="bg-white p-6 rounded-lg shadow-lg text-center"><h3 className="text-gray-500 text-lg">Total de Utilizadores</h3><p className="text-4xl font-bold">{stats.total_users}</p></div>
+                    <div className="bg-white p-6 rounded-lg shadow-lg text-center"><h3 className="text-gray-500 text-lg">Total de Usuários</h3><p className="text-4xl font-bold">{stats.total_users}</p></div>
                     <div className="bg-white p-6 rounded-lg shadow-lg text-center"><h3 className="text-gray-500 text-lg">Total de Inscrições</h3><p className="text-4xl font-bold">{stats.total_registrations}</p></div>
                     <div className="bg-white p-6 rounded-lg shadow-lg text-center"><h3 className="text-gray-500 text-lg">Total de Doações</h3><p className="text-4xl font-bold">R$ {stats.total_contribution_value.toFixed(2)}</p></div>
                 </div>
             )}
 
             {view === 'registrations' && (
-                <div className="bg-white p-6 rounded-lg shadow-lg"><h2 className="text-xl font-semibold mb-4">Gerir Inscrições</h2><div className="overflow-x-auto"><table className="min-w-full bg-white"><thead><tr><th className="py-2 px-4 border-b text-left">Utilizador</th><th className="py-2 px-4 border-b text-left">Serviço</th><th className="py-2 px-4 border-b text-left">Data</th><th className="py-2 px-4 border-b text-left">Status</th><th className="py-2 px-4 border-b text-left">Ações</th></tr></thead><tbody>{registrations.map(reg => (<tr key={reg.ID}><td className="py-2 px-4 border-b">{reg.user?.name || 'N/A'}</td><td className="py-2 px-4 border-b">{reg.service?.name || 'N/A'}</td><td className="py-2 px-4 border-b">{new Date(reg.createdAt).toLocaleDateString()}</td><td className="py-2 px-4 border-b"><span className={`px-2 py-1 text-xs rounded-full ${reg.status === 'Pendente' ? 'bg-yellow-200 text-yellow-800' : reg.status === 'Confirmado' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>{reg.status}</span></td><td className="py-2 px-4 border-b"><div className="flex space-x-1">{reg.status !== 'Confirmado' && (<button onClick={() => handleUpdateStatus(reg.ID, 'Confirmado')} className="bg-green-500 text-white px-2 py-1 text-xs rounded hover:bg-green-600">Aprovar</button>)}{reg.status !== 'Recusado' && (<button onClick={() => handleUpdateStatus(reg.ID, 'Recusado')} className="bg-red-500 text-white px-2 py-1 text-xs rounded hover:bg-red-600">Recusar</button>)}{reg.status !== 'Pendente' && (<button onClick={() => handleUpdateStatus(reg.ID, 'Pendente')} className="bg-yellow-500 text-white px-2 py-1 text-xs rounded hover:bg-yellow-600">Pendente</button>)}</div></td></tr>))}</tbody></table></div></div>
+                <div className="bg-white p-6 rounded-lg shadow-lg"><h2 className="text-xl font-semibold mb-4">Gerenciar Inscrições</h2><div className="overflow-x-auto"><table className="min-w-full bg-white"><thead><tr><th className="py-2 px-4 border-b text-left">Usuário</th><th className="py-2 px-4 border-b text-left">Serviço</th><th className="py-2 px-4 border-b text-left">Data</th><th className="py-2 px-4 border-b text-left">Status</th><th className="py-2 px-4 border-b text-left">Ações</th></tr></thead><tbody>{registrations.map(reg => (<tr key={reg.ID}><td className="py-2 px-4 border-b">{reg.user?.name || 'N/A'}</td><td className="py-2 px-4 border-b">{reg.service?.name || 'N/A'}</td><td className="py-2 px-4 border-b">{new Date(reg.createdAt).toLocaleDateString()}</td><td className="py-2 px-4 border-b"><span className={`px-2 py-1 text-xs rounded-full ${reg.status === 'Pendente' ? 'bg-yellow-200 text-yellow-800' : reg.status === 'Confirmado' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>{reg.status}</span></td><td className="py-2 px-4 border-b"><div className="flex space-x-1">{reg.status !== 'Confirmado' && (<button onClick={() => handleUpdateStatus(reg.ID, 'Confirmado')} className="bg-green-500 text-white px-2 py-1 text-xs rounded hover:bg-green-600">Aprovar</button>)}{reg.status !== 'Recusado' && (<button onClick={() => handleUpdateStatus(reg.ID, 'Recusado')} className="bg-red-500 text-white px-2 py-1 text-xs rounded hover:bg-red-600">Recusar</button>)}{reg.status !== 'Pendente' && (<button onClick={() => handleUpdateStatus(reg.ID, 'Pendente')} className="bg-yellow-500 text-white px-2 py-1 text-xs rounded hover:bg-yellow-600">Pendente</button>)}</div></td></tr>))}</tbody></table></div></div>
             )}
 
              {view === 'users' && (
-                <div className="bg-white p-6 rounded-lg shadow-lg"><h2 className="text-xl font-semibold mb-4">Gerir Utilizadores</h2><div className="overflow-x-auto"><table className="min-w-full bg-white"><thead><tr><th className="py-2 px-4 border-b text-left">Nome</th><th className="py-2 px-4 border-b text-left">Email</th><th className="py-2 px-4 border-b text-left">Admin?</th><th className="py-2 px-4 border-b text-left">Ações</th></tr></thead><tbody>{users.map(user => (<tr key={user.ID}><td className="py-2 px-4 border-b">{user.name}</td><td className="py-2 px-4 border-b">{user.email}</td><td className="py-2 px-4 border-b">{user.isAdmin ? 'Sim' : 'Não'}</td><td className="py-2 px-4 border-b"><button onClick={() => handleOpenEditModal(user)} className="text-blue-500 hover:underline text-sm">Editar</button></td></tr>))}</tbody></table></div></div>
+                <div className="bg-white p-6 rounded-lg shadow-lg"><h2 className="text-xl font-semibold mb-4">Gerenciar Usuários</h2><div className="overflow-x-auto"><table className="min-w-full bg-white"><thead><tr><th className="py-2 px-4 border-b text-left">Nome</th><th className="py-2 px-4 border-b text-left">Email</th><th className="py-2 px-4 border-b text-left">Admin?</th><th className="py-2 px-4 border-b text-left">Ações</th></tr></thead><tbody>{users.map(user => (<tr key={user.ID}><td className="py-2 px-4 border-b">{user.name}</td><td className="py-2 px-4 border-b">{user.email}</td><td className="py-2 px-4 border-b">{user.isAdmin ? 'Sim' : 'Não'}</td><td className="py-2 px-4 border-b"><button onClick={() => handleOpenEditModal(user)} className="text-blue-500 hover:underline text-sm">Editar</button></td></tr>))}</tbody></table></div></div>
             )}
             
             <EditUserModal isOpen={isEditModalOpen} user={editingUser} onClose={handleCloseEditModal} onSave={handleSaveUser} token={token} />
@@ -542,7 +542,7 @@ function App() {
       case 'admin':
         return user.isAdmin ? <AdminPage token={token} /> : <HomePage token={token} />;
       case 'loading':
-         return <div className="text-center p-10">A carregar aplicação...</div>;
+         return <div className="text-center p-10">Carregando aplicação...</div>;
       default:
         return <LoginPage setView={setView} onLogin={handleLogin} />;
     }
