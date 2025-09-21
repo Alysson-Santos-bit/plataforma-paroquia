@@ -302,10 +302,10 @@ const MyProfilePage = ({ token }) => {
                             <div key={reg.ID} className="p-3 border rounded-md flex justify-between items-center">
                                 <div>
                                     <p className="font-bold">{reg.service.name}</p>
-                                    <p className="text-sm text-gray-500">Data: {new Date(reg.CreatedAt).toLocaleDateString()}</p>
+                                    <p className="text-sm text-gray-500">Data: {new Date(reg.createdAt).toLocaleDateString()}</p>
                                 </div>
-                                <span className={`px-3 py-1 text-sm rounded-full ${reg.Status === 'Pendente' ? 'bg-yellow-200 text-yellow-800' : reg.Status === 'Confirmado' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
-                                    {reg.Status}
+                                <span className={`px-3 py-1 text-sm rounded-full ${reg.status === 'Pendente' ? 'bg-yellow-200 text-yellow-800' : reg.status === 'Confirmado' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
+                                    {reg.status}
                                 </span>
                             </div>
                         )) : <p className="text-gray-500">Você ainda não se inscreveu em nenhum serviço.</p>}
@@ -318,7 +318,7 @@ const MyProfilePage = ({ token }) => {
                             <div key={con.ID} className="p-3 border rounded-md flex justify-between items-center">
                                 <div>
                                     <p className="font-bold text-lg">R$ {con.value.toFixed(2)}</p>
-                                    <p className="text-sm text-gray-500">Em {new Date(con.CreatedAt).toLocaleDateString()} via {con.method}</p>
+                                    <p className="text-sm text-gray-500">Em {new Date(con.createdAt).toLocaleDateString()} via {con.method}</p>
                                 </div>
                                 <span className="px-3 py-1 text-sm rounded-full bg-green-200 text-green-800">{con.status}</span>
                             </div>
@@ -404,8 +404,6 @@ const AdminPage = ({ token }) => {
     const [editingUser, setEditingUser] = useState(null);
 
     const fetchData = useCallback(async () => {
-        // Não mostrar o loading em re-fetches para uma experiência mais suave
-        // setLoading(true); 
         try {
             const [stats, registrations, users] = await Promise.all([
                 apiService.getDashboardStats(token),
@@ -478,7 +476,7 @@ const AdminPage = ({ token }) => {
             )}
 
             {view === 'registrations' && (
-                <div className="bg-white p-6 rounded-lg shadow-lg"><h2 className="text-xl font-semibold mb-4">Gerir Inscrições</h2><div className="overflow-x-auto"><table className="min-w-full bg-white"><thead><tr><th className="py-2 px-4 border-b text-left">Utilizador</th><th className="py-2 px-4 border-b text-left">Serviço</th><th className="py-2 px-4 border-b text-left">Data</th><th className="py-2 px-4 border-b text-left">Status</th><th className="py-2 px-4 border-b text-left">Ações</th></tr></thead><tbody>{registrations.map(reg => (<tr key={reg.ID}><td className="py-2 px-4 border-b">{reg.user?.name || 'N/A'}</td><td className="py-2 px-4 border-b">{reg.service?.name || 'N/A'}</td><td className="py-2 px-4 border-b">{new Date(reg.CreatedAt).toLocaleDateString()}</td><td className="py-2 px-4 border-b"><span className={`px-2 py-1 text-xs rounded-full ${reg.Status === 'Pendente' ? 'bg-yellow-200 text-yellow-800' : reg.Status === 'Confirmado' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>{reg.Status}</span></td><td className="py-2 px-4 border-b"><div className="flex space-x-1">{reg.Status !== 'Confirmado' && (<button onClick={() => handleUpdateStatus(reg.ID, 'Confirmado')} className="bg-green-500 text-white px-2 py-1 text-xs rounded hover:bg-green-600">Aprovar</button>)}{reg.Status !== 'Recusado' && (<button onClick={() => handleUpdateStatus(reg.ID, 'Recusado')} className="bg-red-500 text-white px-2 py-1 text-xs rounded hover:bg-red-600">Recusar</button>)}{reg.Status !== 'Pendente' && (<button onClick={() => handleUpdateStatus(reg.ID, 'Pendente')} className="bg-yellow-500 text-white px-2 py-1 text-xs rounded hover:bg-yellow-600">Pendente</button>)}</div></td></tr>))}</tbody></table></div></div>
+                <div className="bg-white p-6 rounded-lg shadow-lg"><h2 className="text-xl font-semibold mb-4">Gerir Inscrições</h2><div className="overflow-x-auto"><table className="min-w-full bg-white"><thead><tr><th className="py-2 px-4 border-b text-left">Utilizador</th><th className="py-2 px-4 border-b text-left">Serviço</th><th className="py-2 px-4 border-b text-left">Data</th><th className="py-2 px-4 border-b text-left">Status</th><th className="py-2 px-4 border-b text-left">Ações</th></tr></thead><tbody>{registrations.map(reg => (<tr key={reg.ID}><td className="py-2 px-4 border-b">{reg.user?.name || 'N/A'}</td><td className="py-2 px-4 border-b">{reg.service?.name || 'N/A'}</td><td className="py-2 px-4 border-b">{new Date(reg.createdAt).toLocaleDateString()}</td><td className="py-2 px-4 border-b"><span className={`px-2 py-1 text-xs rounded-full ${reg.status === 'Pendente' ? 'bg-yellow-200 text-yellow-800' : reg.status === 'Confirmado' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>{reg.status}</span></td><td className="py-2 px-4 border-b"><div className="flex space-x-1">{reg.status !== 'Confirmado' && (<button onClick={() => handleUpdateStatus(reg.ID, 'Confirmado')} className="bg-green-500 text-white px-2 py-1 text-xs rounded hover:bg-green-600">Aprovar</button>)}{reg.status !== 'Recusado' && (<button onClick={() => handleUpdateStatus(reg.ID, 'Recusado')} className="bg-red-500 text-white px-2 py-1 text-xs rounded hover:bg-red-600">Recusar</button>)}{reg.status !== 'Pendente' && (<button onClick={() => handleUpdateStatus(reg.ID, 'Pendente')} className="bg-yellow-500 text-white px-2 py-1 text-xs rounded hover:bg-yellow-600">Pendente</button>)}</div></td></tr>))}</tbody></table></div></div>
             )}
 
              {view === 'users' && (
