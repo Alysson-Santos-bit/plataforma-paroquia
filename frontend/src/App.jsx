@@ -330,12 +330,78 @@ const MyProfilePage = ({ token }) => {
     );
 };
 
+// --- COMPONENTES DO PAINEL DE ADMINISTRAÇÃO ---
+
+const EditUserModal = ({ user, isOpen, onClose, onSave, token }) => {
+    const [formData, setFormData] = useState({});
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (user) {
+            setFormData({
+                name: user.name || '',
+                email: user.email || '',
+                address: user.address || '',
+                dob: user.dob || '',
+                gender: user.gender || '',
+                isAdmin: user.isAdmin || false,
+            });
+        }
+    }, [user]);
+
+    if (!isOpen) return null;
+
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    };
+
+    const handleSave = async () => {
+        setLoading(true);
+        try {
+            await apiService.updateUser(user.ID, formData, token);
+            onSave(); // Fecha o modal e atualiza a lista
+        } catch (error) {
+            alert("Erro ao atualizar utilizador: " + error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+            <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg">
+                <h2 className="text-2xl font-bold mb-4">Editar Utilizador</h2>
+                <div className="space-y-4">
+                    <input name="name" value={formData.name} onChange={handleChange} placeholder="Nome" className="w-full p-2 border rounded-md" />
+                    <input name="email" value={formData.email} onChange={handleChange} placeholder="Email" className="w-full p-2 border rounded-md" />
+                    <input name="address" value={formData.address} onChange={handleChange} placeholder="Endereço" className="w-full p-2 border rounded-md" />
+                    <div className="flex items-center">
+                        <input type="checkbox" name="isAdmin" checked={formData.isAdmin} onChange={handleChange} className="mr-2 h-5 w-5" />
+                        <label>É Administrador?</label>
+                    </div>
+                </div>
+                <div className="flex justify-end space-x-4 mt-6">
+                    <button onClick={onClose} className="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400">Cancelar</button>
+                    <button onClick={handleSave} disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400">
+                        {loading ? 'A guardar...' : 'Guardar Alterações'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
 const AdminPage = ({ token }) => {
     const [view, setView] = useState('dashboard'); // dashboard, registrations, users
     const [data, setData] = useState({ stats: null, registrations: [], users: [] });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
+    
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingUser, setEditingUser] = useState(null);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -361,12 +427,30 @@ const AdminPage = ({ token }) => {
         try {
             const response = await apiService.updateRegistrationStatus(regId, status, token);
             setMessage(response.message);
-            fetchData(); // Refresh data
+            fetchData();
         } catch(err) {
             setMessage(err.message || 'Erro ao atualizar status.');
         }
         setTimeout(() => setMessage(''), 5000);
     };
+    
+    const handleOpenEditModal = (user) => {
+        setEditingUser(user);
+        setIsEditModalOpen(true);
+    };
+
+    const handleCloseEditModal = () => {
+        setIsEditModalOpen(false);
+        setEditingUser(null);
+    };
+    
+    const handleSaveUser = () => {
+        handleCloseEditModal();
+        setMessage("Utilizador atualizado com sucesso!");
+        fetchData(); // Re-fetch all data to show changes
+        setTimeout(() => setMessage(''), 5000);
+    };
+
 
     if (loading) return <div className="text-center p-10">A carregar painel de administração...</div>;
     if (error) return <div className="text-center p-10 text-red-500">{error}</div>;
@@ -386,87 +470,21 @@ const AdminPage = ({ token }) => {
 
             {view === 'dashboard' && stats && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div className="bg-white p-6 rounded-lg shadow-lg text-center">
-                        <h3 className="text-gray-500 text-lg">Total de Utilizadores</h3>
-                        <p className="text-4xl font-bold">{stats.total_users}</p>
-                    </div>
-                    <div className="bg-white p-6 rounded-lg shadow-lg text-center">
-                        <h3 className="text-gray-500 text-lg">Total de Inscrições</h3>
-                        <p className="text-4xl font-bold">{stats.total_registrations}</p>
-                    </div>
-                    <div className="bg-white p-6 rounded-lg shadow-lg text-center">
-                        <h3 className="text-gray-500 text-lg">Total de Doações</h3>
-                        <p className="text-4xl font-bold">R$ {stats.total_contribution_value.toFixed(2)}</p>
-                    </div>
+                    <div className="bg-white p-6 rounded-lg shadow-lg text-center"><h3 className="text-gray-500 text-lg">Total de Utilizadores</h3><p className="text-4xl font-bold">{stats.total_users}</p></div>
+                    <div className="bg-white p-6 rounded-lg shadow-lg text-center"><h3 className="text-gray-500 text-lg">Total de Inscrições</h3><p className="text-4xl font-bold">{stats.total_registrations}</p></div>
+                    <div className="bg-white p-6 rounded-lg shadow-lg text-center"><h3 className="text-gray-500 text-lg">Total de Doações</h3><p className="text-4xl font-bold">R$ {stats.total_contribution_value.toFixed(2)}</p></div>
                 </div>
             )}
 
             {view === 'registrations' && (
-                <div className="bg-white p-6 rounded-lg shadow-lg">
-                    <h2 className="text-xl font-semibold mb-4">Gerir Inscrições</h2>
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full bg-white">
-                            <thead>
-                                <tr>
-                                    <th className="py-2 px-4 border-b">Utilizador</th>
-                                    <th className="py-2 px-4 border-b">Serviço</th>
-                                    <th className="py-2 px-4 border-b">Data</th>
-                                    <th className="py-2 px-4 border-b">Status</th>
-                                    <th className="py-2 px-4 border-b">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {registrations.map(reg => (
-                                    <tr key={reg.ID}>
-                                        <td className="py-2 px-4 border-b">{reg.user?.name || 'N/A'}</td>
-                                        <td className="py-2 px-4 border-b">{reg.service?.name || 'N/A'}</td>
-                                        <td className="py-2 px-4 border-b">{new Date(reg.CreatedAt).toLocaleDateString()}</td>
-                                        <td className="py-2 px-4 border-b">{reg.Status}</td>
-                                        <td className="py-2 px-4 border-b">
-                                            {reg.Status === 'Pendente' && (
-                                                <div className="flex space-x-2">
-                                                    <button onClick={() => handleUpdateStatus(reg.ID, 'Confirmado')} className="bg-green-500 text-white px-2 py-1 text-xs rounded hover:bg-green-600">Aprovar</button>
-                                                    <button onClick={() => handleUpdateStatus(reg.ID, 'Recusado')} className="bg-red-500 text-white px-2 py-1 text-xs rounded hover:bg-red-600">Recusar</button>
-                                                </div>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                <div className="bg-white p-6 rounded-lg shadow-lg"><h2 className="text-xl font-semibold mb-4">Gerir Inscrições</h2><div className="overflow-x-auto"><table className="min-w-full bg-white"><thead><tr><th className="py-2 px-4 border-b">Utilizador</th><th className="py-2 px-4 border-b">Serviço</th><th className="py-2 px-4 border-b">Data</th><th className="py-2 px-4 border-b">Status</th><th className="py-2 px-4 border-b">Ações</th></tr></thead><tbody>{registrations.map(reg => (<tr key={reg.ID}><td className="py-2 px-4 border-b">{reg.user?.name || 'N/A'}</td><td className="py-2 px-4 border-b">{reg.service?.name || 'N/A'}</td><td className="py-2 px-4 border-b">{new Date(reg.CreatedAt).toLocaleDateString()}</td><td className="py-2 px-4 border-b">{reg.Status}</td><td className="py-2 px-4 border-b">{reg.Status === 'Pendente' && (<div className="flex space-x-2"><button onClick={() => handleUpdateStatus(reg.ID, 'Confirmado')} className="bg-green-500 text-white px-2 py-1 text-xs rounded hover:bg-green-600">Aprovar</button><button onClick={() => handleUpdateStatus(reg.ID, 'Recusado')} className="bg-red-500 text-white px-2 py-1 text-xs rounded hover:bg-red-600">Recusar</button></div>)}</td></tr>))}</tbody></table></div></div>
             )}
 
              {view === 'users' && (
-                <div className="bg-white p-6 rounded-lg shadow-lg">
-                    <h2 className="text-xl font-semibold mb-4">Gerir Utilizadores</h2>
-                     <div className="overflow-x-auto">
-                        <table className="min-w-full bg-white">
-                           <thead>
-                                <tr>
-                                    <th className="py-2 px-4 border-b">Nome</th>
-                                    <th className="py-2 px-4 border-b">Email</th>
-                                    <th className="py-2 px-4 border-b">Admin?</th>
-                                    <th className="py-2 px-4 border-b">Ações</th>
-                                </tr>
-                            </thead>
-                             <tbody>
-                                {users.map(user => (
-                                    <tr key={user.ID}>
-                                        <td className="py-2 px-4 border-b">{user.name}</td>
-                                        <td className="py-2 px-4 border-b">{user.email}</td>
-                                        <td className="py-2 px-4 border-b">{user.isAdmin ? 'Sim' : 'Não'}</td>
-                                        <td className="py-2 px-4 border-b">
-                                            <button className="text-blue-500 hover:underline text-sm" onClick={() => alert('Função de editar utilizador a ser implementada.')}>Editar</button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                <div className="bg-white p-6 rounded-lg shadow-lg"><h2 className="text-xl font-semibold mb-4">Gerir Utilizadores</h2><div className="overflow-x-auto"><table className="min-w-full bg-white"><thead><tr><th className="py-2 px-4 border-b">Nome</th><th className="py-2 px-4 border-b">Email</th><th className="py-2 px-4 border-b">Admin?</th><th className="py-2 px-4 border-b">Ações</th></tr></thead><tbody>{users.map(user => (<tr key={user.ID}><td className="py-2 px-4 border-b">{user.name}</td><td className="py-2 px-4 border-b">{user.email}</td><td className="py-2 px-4 border-b">{user.isAdmin ? 'Sim' : 'Não'}</td><td className="py-2 px-4 border-b"><button onClick={() => handleOpenEditModal(user)} className="text-blue-500 hover:underline text-sm">Editar</button></td></tr>))}</tbody></table></div></div>
             )}
+            
+            <EditUserModal isOpen={isEditModalOpen} user={editingUser} onClose={handleCloseEditModal} onSave={handleSaveUser} token={token} />
         </div>
     );
 };
